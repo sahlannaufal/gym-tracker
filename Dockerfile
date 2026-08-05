@@ -1,8 +1,11 @@
 # ---- deps: install all dependencies ----
 FROM node:22-alpine AS deps
 WORKDIR /app
+# Pin npm ke versi yang sama dengan pembuat package-lock.json (npm 11).
+# npm 10 bawaan image menolak lock ini (peer @swc/helpers), sedangkan npm 11 menerimanya.
+RUN npm install -g npm@11.6.2 --no-audit --no-fund
 COPY package.json package-lock.json ./
-RUN npm ci
+RUN npm ci --no-audit --no-fund
 
 # ---- build: compile the Next.js app ----
 FROM node:22-alpine AS build
