@@ -35,6 +35,7 @@ Aplikasi web sederhana (MVP) untuk mencatat dan memantau progres latihan beban (
 - Form pencatatan workout.
 - Halaman histori / log latihan.
 - Grafik progress beban sederhana.
+- Rutin latihan harian (jadwal mingguan + quick-log).
 - Penyimpanan data LocalStorage.
 
 ### 5.2 Out-of-Scope (MVP)
@@ -42,7 +43,7 @@ Aplikasi web sederhana (MVP) untuk mencatat dan memantau progres latihan beban (
 - Autentikasi & multi-user.
 - Sinkronisasi cloud (Supabase/SQLite) — fase berikutnya.
 - Edit data yang sudah tersimpan.
-- Template program latihan & rest timer.
+- Template program latihan lanjutan (rotasi Push/Pull/Legs) & rest timer.
 - Kategori otot / equipment, foto sebelum-sesudah.
 - Filtering lanjutan (rentang tanggal, musim, dll).
 
@@ -72,24 +73,38 @@ Aplikasi web sederhana (MVP) untuk mencatat dan memantau progres latihan beban (
 
 ### F3. Halaman Histori / Log Latihan
 
+- Bagian "Riwayat" dari halaman **Progres** (`/progress`, segmented control dengan "Grafik").
 - Menampilkan seluruh entri workout terurut tanggal **descending** (terbaru di atas).
+- Filter per nama latihan (dropdown "Pilih Latihan", default "Semua Latihan").
+- Filter rentang tanggal ("Dari" & "Sampai", keduanya opsional, string `YYYY-MM-DD`); berlaku bersamaan dengan filter latihan. Rentang tidak valid (Dari > Sampai) menampilkan pesan peringatan.
 - Setiap item menampilkan: nama latihan, beban, repetisi, set, tanggal.
 - Aksi **hapus** per entri (dengan konfirmasi).
 - Tampilan kosong (empty state): pesan "Belum ada latihan, yuk catat latihan pertama" + tombol tambah.
 
 ### F4. Grafik Progress Beban
 
+- Bagian "Grafik" dari halaman **Progres** (`/progress`, segmented control dengan "Riwayat").
 - Line chart sederhana: sumbu X = tanggal, sumbu Y = beban (kg).
-- Dapat dipilih per nama latihan (dropdown/pill pilihan latihan).
+- Dapat dipilih per nama latihan (dropdown "Pilih Latihan"); grafik kosong sebelum memilih latihan.
 - Data yang diplot: beban maksimum per tanggal untuk latihan terpilih (jika ada beberapa set dalam sehari, pakai nilai terbesar).
 - Tidak memerlukan library berat; boleh pakai chart library ringan (Chart.js / Recharts) atau SVG custom sesuai kebutuhan.
 
 ### F5. Penyimpanan LocalStorage
 
-- Key: `gym_tracker_workouts_v1`.
-- Struktur: array objek workout (lihat Data Model).
+- Key workout: `gym_tracker_workouts_v1`.
+- Key rutin: `gym_tracker_routine_v1`.
+- Struktur: array objek workout (lihat Data Model) + rutin harian.
 - Tambahkan **versi data** agar mudah dimigrasi ke depannya.
 - Handler saat JSON corrupt / tidak valid: reset data lama dengan aman tanpa crash.
+
+### F6. Rutin Latihan Harian
+
+- Atur jadwal **mingguan tetap** (Senin–Minggu): tiap hari berisi list latihan (dari `EXERCISE_CATEGORIES` atau nama custom).
+- Editor rutin (`/routine`): tambah/hapus hanya mengubah **draft lokal** per hari → ada tombol **"Simpan"** per hari (persist via `setDayExercises`) dengan indikator "Belum disimpan" / "✓ Tersimpan". Bukan auto-save global.
+- Halaman **"Latihan Hari Ini"** (`/today`) menampilkan list latihan berdasarkan tanggal terpilih (date picker, default hari ini; label nama hari). Tiap latihan punya tombol **"Catat Latihan"** → shortcut ke `/workout/new?exercise=<nama>`, di mana nama latihan ter-pilih otomatis dan **beban/repetisi/set di-prefill dari sesi terakhir** latihan tersebut (tanggal tetap hari ini). Tombol "Set Latihan Harian" → `/routine`.
+- Tiap latihan di list menampilkan **badge jumlah set** pada tanggal terpilih, dan tombol **dropdown (chevron)** untuk **expand riwayat progres latihan itu di tanggal tersebut** (entri per jam: beban × rep × set + aksi hapus).
+- Dashboard menampilkan kartu ringkas "Latihan Hari Ini" (jumlah latihan) → tombol "Isi Sekarang" / "Set Latihan Harian".
+- Empty state: hari tanpa rutin menampilkan link ke editor rutin.
 
 ## 7. Data Model
 
@@ -116,6 +131,24 @@ Aplikasi web sederhana (MVP) untuk mencatat dan memantau progres latihan beban (
 - **date:** hanya tanggal (tanpa waktu) sebagai basis grouping & grafik.
 - **createdAt:** timestamp lengkap saat pencatatan.
 
+```json
+// localStorage["gym_tracker_routine_v1"]
+{
+  "version": 1,
+  "days": {
+    "minggu": [],
+    "senin": ["Bench Press (Barbell)", "Squat"],
+    "selasa": [],
+    "rabu": ["Pull-Up / Chin-Up"],
+    "kamis": [],
+    "jumat": ["Deadlift"],
+    "sabtu": []
+  }
+}
+```
+
+- **days:** map `Weekday` (minggu–sabtu, indeks sama dengan `Date.getDay()`) → list nama latihan unik.
+
 ## 8. Alur Navigasi (Wireframe Teks)
 
 ```
@@ -126,13 +159,16 @@ Aplikasi web sederhana (MVP) untuk mencatat dan memantau progres latihan beban (
 |      |                          ^
 v      v                          |
 +----------------+      +------------------+
-|   Histori Log  |      |  Grafik Progress |
+|   Hari Ini     |      |  Progres:        |
+|  Latihan | Rutin|      |  Riwayat | Grafik |
 +----------------+      +------------------+
 ```
 
-- Navigasi utama: **Dashboard**, **Tambah Latihan**, **Histori**, **Grafik**.
+- **Bottom navigation (mobile-first):** tab bawah tetap — **Beranda** (`/`), **Hari Ini** (`/today`), FAB **+ Tambah** (`/workout/new`), **Progres** (`/progress`).
+- **Hari Ini** memuat dua view (segmented control): **Latihan** (date picker + list latihan per tanggal + "Catat Latihan") dan **Rutin** (editor jadwal mingguan, simpan per hari). `/routine` redirect → `/today?view=rutin`.
+- **Progres** memuat dua view (segmented control): **Riwayat** (list histori + filter latihan/rentang tanggal + hapus) dan **Grafik** (chart beban per latihan). `/history` redirect → `/progress`.
 - Setelah simpan entri: kembali ke Dashboard.
-- Grafik & Histori bisa diakses dari navigasi utama dan dari Dashboard.
+- Dashboard menampilkan kartu "Latihan Hari Ini" → `/today` (jika ada rutin) atau `/today?view=rutin` (jika belum).
 
 ## 9. Non-Functional Requirements
 
@@ -153,7 +189,8 @@ v      v                          |
 | M3 | Dashboard ringkasan. |
 | M4 | Halaman histori + hapus entri. |
 | M5 | Grafik progress beban. |
-| M6 | Polish: empty state, error handling, testing, update PRD jika ada perubahan. |
+| M6 | Rutin latihan harian: editor jadwal mingguan (simpan per hari) + halaman "Latihan Hari Ini" per tanggal dengan shortcut "Catat Latihan" (prefill sesi terakhir). |
+| M7 | Polish: empty state, error handling, testing, update PRD jika ada perubahan. |
 
 ## 11. Definition of Done
 
@@ -166,9 +203,9 @@ v      v                          |
 ## 12. Roadmap (Non-MVP / Fase Berikutnya)
 
 - Edit & duplikasi entri.
-- Filter histori (nama latihan, rentang tanggal).
 - Perhitungan 1RM (Epley/Brzycki) & target progressive overload.
-- Template program latihan.
+- Template program latihan lanjutan (rotasi Push/Pull/Legs).
+- Prefill beban/repetisi/set dari sesi terakhir di shortcut "Catat Latihan" (sudah aktif di MVP F6).
 - Sinkronisasi cloud: Supabase / SQLite (multi-device).
 - Ekspor data (CSV/JSON) & backup.
 - Statistik lanjutan: volume mingguan, streak, kalender aktivitas.

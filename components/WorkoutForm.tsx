@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useWorkouts } from "@/lib/useWorkouts";
+import { todayLocalISO } from "@/lib/format";
 import {
   CUSTOM_EXERCISE_VALUE,
   EXERCISE_CATEGORIES,
@@ -19,13 +20,6 @@ interface FormValues {
 
 type FormErrors = Partial<Record<keyof FormValues, string>>;
 
-function todayLocalISO(): string {
-  const now = new Date();
-  return new Date(now.getTime() - now.getTimezoneOffset() * 60000)
-    .toISOString()
-    .slice(0, 10);
-}
-
 const initialValues: FormValues = {
   exerciseSelect: "",
   customExercise: "",
@@ -34,6 +28,10 @@ const initialValues: FormValues = {
   sets: "",
   date: todayLocalISO(),
 };
+
+const knownExerciseNames = new Set(
+  EXERCISE_CATEGORIES.flatMap((group) => group.exercises)
+);
 
 function validate(values: FormValues): FormErrors {
   const errors: FormErrors = {};
@@ -98,11 +96,47 @@ function Field({
   );
 }
 
-export default function WorkoutForm() {
+export default function WorkoutForm({
+  initialExercise,
+}: {
+  initialExercise?: string;
+}) {
   const router = useRouter();
-  const { addWorkout } = useWorkouts();
-  const [values, setValues] = useState<FormValues>(initialValues);
+  const { workouts, isLoaded, addWorkout } = useWorkouts();
+  const [values, setValues] = useState<FormValues>(() => {
+    if (!initialExercise) return initialValues;
+    if (knownExerciseNames.has(initialExercise)) {
+      return { ...initialValues, exerciseSelect: initialExercise };
+    }
+    return {
+      ...initialValues,
+      exerciseSelect: CUSTOM_EXERCISE_VALUE,
+      customExercise: initialExercise,
+    };
+  });
   const [errors, setErrors] = useState<FormErrors>({});
+
+  useEffect(() => {
+    if (!isLoaded || !initialExercise) return;
+    if (values.weight !== "" || values.reps !== "" || values.sets !== "") {
+      return;
+    }
+    const last = workouts
+      .filter((w) => w.exercise === initialExercise)
+      .sort(
+        (a, b) =>
+          b.date.localeCompare(a.date) ||
+          b.createdAt.localeCompare(a.createdAt)
+      )[0];
+    if (!last) return;
+    setValues((prev) => ({
+      ...prev,
+      weight: String(last.weight),
+      reps: String(last.reps),
+      sets: String(last.sets),
+    }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoaded]);
 
   const setValue = (key: keyof FormValues) => (
     e: React.ChangeEvent<HTMLInputElement>
@@ -162,7 +196,7 @@ export default function WorkoutForm() {
           value={values.exerciseSelect}
           onChange={handleSelectChange}
           className={inputClass}
-          autoFocus
+          autoFocus={!initialExercise}
         >
           <option value="" disabled>
             Pilih Latihan...
@@ -202,6 +236,7 @@ export default function WorkoutForm() {
             onChange={setValue("weight")}
             placeholder="60"
             className={inputClass}
+            autoFocus={Boolean(initialExercise)}
           />
         </Field>
 

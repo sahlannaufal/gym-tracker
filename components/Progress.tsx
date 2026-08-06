@@ -55,7 +55,7 @@ export default function Progress() {
   }
 
   const exercises = [...new Set(workouts.map((w) => w.exercise))].sort();
-  const current = selected ?? exercises[0];
+  const current = selected;
 
   const maxWeightByDate = new Map<string, number>();
   const filtered = workouts.filter((w) => w.exercise === current);
@@ -97,85 +97,103 @@ export default function Progress() {
     <section className="space-y-6">
       <h1 className="text-2xl font-bold">Grafik Progress</h1>
 
-      <div className="flex flex-wrap gap-2">
-        {exercises.map((name) => (
-          <button
-            key={name}
-            onClick={() => setSelected(name)}
-            className={`rounded-full border px-4 py-1.5 text-sm font-medium transition-colors ${
-              name === current
-                ? "border-lime-400 bg-lime-400 text-gray-950"
-                : "border-gray-700 text-gray-300 hover:bg-gray-800"
-            }`}
-          >
-            {name}
-          </button>
-        ))}
+      <div className="max-w-xs">
+        <label
+          htmlFor="exerciseSelect"
+          className="mb-1.5 block text-sm font-medium text-gray-300"
+        >
+          Pilih Latihan
+        </label>
+        <select
+          id="exerciseSelect"
+          value={selected ?? ""}
+          onChange={(e) => setSelected(e.target.value)}
+          className="w-full rounded-xl border border-gray-700 bg-gray-900 px-4 py-2.5 text-gray-100 focus:border-lime-400 focus:outline-none focus:ring-1 focus:ring-lime-400"
+        >
+          <option value="" disabled>
+            Pilih Latihan...
+          </option>
+          {exercises.map((name) => (
+            <option key={name} value={name}>
+              {name}
+            </option>
+          ))}
+        </select>
       </div>
 
-      <div className="rounded-2xl border border-gray-800 bg-gray-900/50 p-4">
-        <p className="mb-2 text-sm font-medium text-gray-300">
-          {current} - beban maksimum per sesi
-        </p>
-        <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img">
-          {gridlines.map((v) => (
-            <g key={v}>
-              <line
-                x1={PAD.left}
-                x2={W - PAD.right}
-                y1={yFor(v)}
-                y2={yFor(v)}
-                stroke="#1f2937"
-                strokeWidth={1}
-              />
-              <text
-                x={PAD.left - 6}
-                y={yFor(v) + 3}
-                textAnchor="end"
-                fontSize={10}
-                className="fill-gray-500"
-              >
-                {Math.round(v)}
-              </text>
-            </g>
-          ))}
-          {points.length > 1 && (
-            <polyline
-              points={points.map((p, i) => `${xFor(i)},${yFor(p[1])}`).join(" ")}
-              fill="none"
-              stroke="#a3e635"
-              strokeWidth={2}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          )}
-          {points.map((p, i) => (
-            <g key={p[0]}>
-              <circle cx={xFor(i)} cy={yFor(p[1])} r={3.5} fill="#a3e635" />
-              <text
-                x={xFor(i)}
-                y={H - 8}
-                textAnchor="middle"
-                fontSize={10}
-                className="fill-gray-500"
-              >
-                {formatDateShort(p[0])}
-              </text>
-            </g>
-          ))}
-        </svg>
-        {points.length === 1 && (
-          <p className="mt-1 text-center text-sm text-gray-500">
-            Tambahkan lebih banyak sesi untuk melihat tren beban.
+      {!current && (
+        <div className="rounded-2xl border border-dashed border-gray-700 p-8 text-center">
+          <p className="text-gray-300">Pilih latihan untuk melihat grafik.</p>
+        </div>
+      )}
+
+      {current && (
+        <div className="rounded-2xl border border-gray-800 bg-gray-900/50 p-4">
+          <p className="mb-2 text-sm font-medium text-gray-300">
+            {current} - beban maksimum per sesi
           </p>
-        )}
-      </div>
+          <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img">
+            {gridlines.map((v) => (
+              <g key={v}>
+                <line
+                  x1={PAD.left}
+                  x2={W - PAD.right}
+                  y1={yFor(v)}
+                  y2={yFor(v)}
+                  stroke="#1f2937"
+                  strokeWidth={1}
+                />
+                <text
+                  x={PAD.left - 6}
+                  y={yFor(v) + 3}
+                  textAnchor="end"
+                  fontSize={10}
+                  className="fill-gray-500"
+                >
+                  {Math.round(v)}
+                </text>
+              </g>
+            ))}
+            {points.length > 1 && (
+              <polyline
+                points={points.map((p, i) => `${xFor(i)},${yFor(p[1])}`).join(" ")}
+                fill="none"
+                stroke="#a3e635"
+                strokeWidth={2}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            )}
+            {points.map((p, i) => (
+              <g key={p[0]}>
+                <circle cx={xFor(i)} cy={yFor(p[1])} r={3.5} fill="#a3e635" />
+                <text
+                  x={xFor(i)}
+                  y={H - 8}
+                  textAnchor="middle"
+                  fontSize={10}
+                  className="fill-gray-500"
+                >
+                  {formatDateShort(p[0])}
+                </text>
+              </g>
+            ))}
+          </svg>
+          {points.length === 1 && (
+            <p className="mt-1 text-center text-sm text-gray-500">
+              Tambahkan lebih banyak sesi untuk melihat tren beban.
+            </p>
+          )}
+        </div>
+      )}
 
-      <div className="grid grid-cols-3 gap-4">
-        <Summary label="Max Beban" value={`${maxWeight} kg`} />
-        <Summary label="Total Volume" value={`${Math.round(totalVolume)} kg`} />
-        <Summary label="Total Sesi" value={filtered.length} />
-      </div>
+      {current && (
+        <div className="grid grid-cols-3 gap-4">
+          <Summary label="Max Beban" value={`${maxWeight} kg`} />
+          <Summary label="Total Volume" value={`${Math.round(totalVolume)} kg`} />
+          <Summary label="Total Sesi" value={filtered.length} />
+        </div>
+      )}
     </section>
   );
 }

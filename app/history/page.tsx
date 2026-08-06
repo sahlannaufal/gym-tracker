@@ -1,5 +1,5 @@
-import History from "@/components/History";
+import { redirect } from "next/navigation";
 
 export default function HistoryPage() {
-  return <History />;
+  redirect("/progress");
 }

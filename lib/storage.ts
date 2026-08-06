@@ -1,4 +1,11 @@
-import type { Workout, WorkoutInput, WorkoutStore } from "./types";
+import { WEEKDAYS } from "./types";
+import type {
+  Routine,
+  Weekday,
+  Workout,
+  WorkoutInput,
+  WorkoutStore,
+} from "./types";
 
 const STORAGE_KEY = "gym_tracker_workouts_v1";
 const STORE_VERSION = 1;
@@ -65,4 +72,61 @@ export function saveWorkout(input: WorkoutInput): Workout {
 
 export function deleteWorkout(id: string): void {
   persist(loadWorkouts().filter((w) => w.id !== id));
+}
+
+const ROUTINE_KEY = "gym_tracker_routine_v1";
+const ROUTINE_VERSION = 1;
+
+function emptyRoutine(): Routine {
+  return {
+    version: ROUTINE_VERSION,
+    days: {
+      minggu: [],
+      senin: [],
+      selasa: [],
+      rabu: [],
+      kamis: [],
+      jumat: [],
+      sabtu: [],
+    },
+  };
+}
+
+function normalizeRoutine(value: unknown): Routine {
+  if (typeof value !== "object" || value === null) return emptyRoutine();
+  const raw = value as Record<string, unknown>;
+  if (typeof raw.days !== "object" || raw.days === null) return emptyRoutine();
+  const daysRaw = raw.days as Record<string, unknown>;
+  const days = {} as Record<Weekday, string[]>;
+  for (const day of WEEKDAYS) {
+    const list = daysRaw[day];
+    days[day] = Array.isArray(list)
+      ? list.filter(
+          (item): item is string =>
+            typeof item === "string" && item.trim().length > 0
+        )
+      : [];
+  }
+  return { version: ROUTINE_VERSION, days };
+}
+
+export function loadRoutine(): Routine {
+  try {
+    const raw = localStorage.getItem(ROUTINE_KEY);
+    if (!raw) return emptyRoutine();
+    return normalizeRoutine(JSON.parse(raw));
+  } catch {
+    return emptyRoutine();
+  }
+}
+
+export function saveRoutine(routine: Routine): void {
+  localStorage.setItem(
+    ROUTINE_KEY,
+    JSON.stringify({ version: ROUTINE_VERSION, days: routine.days })
+  );
+}
+
+export function getDayExercises(day: Weekday, routine: Routine): string[] {
+  return routine.days[day] ?? [];
 }

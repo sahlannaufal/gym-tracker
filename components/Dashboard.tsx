@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { useWorkouts } from "@/lib/useWorkouts";
+import { useRoutine } from "@/lib/useRoutine";
+import { WEEKDAYS } from "@/lib/types";
 import { formatDate } from "@/lib/format";
 
 function StatCard({
@@ -26,6 +28,7 @@ function StatCard({
 
 export default function Dashboard() {
   const { workouts, isLoaded } = useWorkouts();
+  const { routine } = useRoutine();
 
   if (!isLoaded) {
     return <p className="text-gray-500">Memuat...</p>;
@@ -72,6 +75,10 @@ export default function Dashboard() {
       b.date.localeCompare(a.date) || b.createdAt.localeCompare(a.createdAt)
   )[0];
 
+  const todayCount = routine
+    ? (routine.days[WEEKDAYS[new Date().getDay()]] ?? []).length
+    : 0;
+
   return (
     <section className="space-y-6">
       <div className="flex items-center justify-between gap-3">
@@ -84,6 +91,23 @@ export default function Dashboard() {
           className="shrink-0 rounded-xl bg-lime-400 px-4 py-2.5 text-sm font-semibold text-gray-950 transition-colors hover:bg-lime-300"
         >
           + Tambah Latihan
+        </Link>
+      </div>
+
+      <div className="flex items-center justify-between gap-3 rounded-2xl border border-lime-500/40 bg-lime-400/10 p-5">
+        <div>
+          <p className="text-xs font-medium uppercase tracking-wide text-lime-300">
+            Latihan Hari Ini
+          </p>
+          <p className="mt-1 text-lg font-bold text-gray-100">
+            {todayCount === 0 ? "Belum ada rutin" : `${todayCount} latihan`}
+          </p>
+        </div>
+        <Link
+          href={todayCount > 0 ? "/today" : "/today?view=rutin"}
+          className="shrink-0 rounded-xl bg-lime-400 px-4 py-2.5 text-sm font-semibold text-gray-950 transition-colors hover:bg-lime-300"
+        >
+          {todayCount > 0 ? "Isi Sekarang" : "Set Latihan Harian"}
         </Link>
       </div>
 

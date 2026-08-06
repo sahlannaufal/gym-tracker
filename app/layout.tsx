@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
-import Navbar from "@/components/Navbar";
+import BottomNav from "@/components/BottomNav";
 import InstallPrompt from "@/components/InstallPrompt";
 import { SerwistProvider } from "@/components/SerwistProvider";
 
@@ -29,9 +29,9 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   const content = (
     <>
-      <Navbar />
-      <main className="mx-auto w-full max-w-2xl px-4 py-6">{children}</main>
+      <main className="mx-auto w-full max-w-2xl px-4 pt-6 pb-28">{children}</main>
       <InstallPrompt />
+      <BottomNav />
     </>
   );
 
