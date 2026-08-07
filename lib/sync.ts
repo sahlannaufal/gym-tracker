@@ -170,22 +170,28 @@ export async function syncAll(userId: string): Promise<void> {
 
     replaceWorkouts([...merged.values()]);
 
-    // 5. Routine (satu baris per user)
-    const localRoutine = loadRoutine();
-    const { error: routineErr } = await supabase.from("routine").upsert({
-      id: userId,
-      days: localRoutine.days,
-      updated_at: new Date().toISOString(),
-    });
-    if (routineErr) throw routineErr;
+    // 5. Routine (satu baris per user) - Pull dulu dari server sebelum upsert
     const { data: routineRow, error: routinePullErr } = await supabase
       .from("routine")
-      .select("days")
+      .select("days, updated_at")
       .eq("id", userId)
       .maybeSingle();
     if (routinePullErr) throw routinePullErr;
-    if (routineRow) {
+
+    const localRoutine = loadRoutine();
+    const hasLocalRoutine = Object.values(localRoutine.days).some((arr) => arr.length > 0);
+
+    if (routineRow && routineRow.days) {
+      // Jika server punya data, gunakan data server (atau bisa ditambahkan logic last-write-wins jika local punya timestamp)
       saveRoutine({ version: 1, days: routineRow.days as Routine["days"] });
+    } else if (hasLocalRoutine) {
+      // Jika server kosong tapi local ada isinya, upload ke server
+      const { error: routineErr } = await supabase.from("routine").upsert({
+        id: userId,
+        days: localRoutine.days,
+        updated_at: new Date().toISOString(),
+      });
+      if (routineErr) throw routineErr;
     }
 
     setStatus({ state: "synced", lastSync: new Date().toISOString() });

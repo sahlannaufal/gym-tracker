@@ -10,6 +10,9 @@ export function useRoutine() {
 
   useEffect(() => {
     setRoutine(loadRoutine());
+    requestSync().then(() => {
+      setRoutine(loadRoutine());
+    });
   }, []);
 
   const setDayExercises = useCallback((day: Weekday, exercises: string[]) => {
