@@ -106,6 +106,16 @@ Aplikasi web sederhana (MVP) untuk mencatat dan memantau progres latihan beban (
 - Dashboard menampilkan kartu ringkas "Latihan Hari Ini" (jumlah latihan) → tombol "Isi Sekarang" / "Set Latihan Harian".
 - Empty state: hari tanpa rutin menampilkan link ke editor rutin.
 
+### F7. Sinkronisasi Cloud (Supabase) & Login
+
+- **Offline-first:** LocalStorage tetap sumber utama untuk UI; Supabase adalah cloud copy + identitas. PWA tetap berfungsi penuh tanpa koneksi.
+- **Login opsional** (email + password via Supabase Auth): tanpa login app tetap jalan (data lokal); dengan login data disinkronkan lintas perangkat.
+- **Sinkronisasi dua arah** (`lib/sync.ts`): antrian delete offline (tombstone) diproses dulu → upload workout lokal yang lebih baru (upsert by `id`) → pull server → merge **last-write-wins by `updated_at`** → tulis balik LocalStorage. Routine disinkronkan sebagai satu baris JSON per user.
+- **Trigger sync:** saat login/logout, event `online`, window focus, dan setelah setiap mutasi (add/hapus/set rutin) via `requestSync()`.
+- **Tabel Supabase** (`supabase/migrations/0001_init.sql`): `workouts` (`id text PK`, `user_id uuid` FK `auth.users`, kolom entri + `created_at`/`updated_at`) & `routine` (`id uuid PK = user_id`, `days jsonb`, `updated_at`), semuanya **RLS** (`auth.uid() = user_id`).
+- **Status sinkronisasi** tampil di halaman Profil (`/account`): belum tersinkron / menyinkronkan / tersinkron / gagal + tombol "Sinkronkan Sekarang" & "Keluar".
+- Env: `NEXT_PUBLIC_SUPABASE_URL` & `NEXT_PUBLIC_SUPABASE_ANON_KEY` (dibutuhkan saat build Docker).
+
 ## 7. Data Model
 
 ```json
@@ -130,6 +140,9 @@ Aplikasi web sederhana (MVP) untuk mencatat dan memantau progres latihan beban (
 - **exercise:** nama latihan (bukan `exercise_name`), diisi dari `EXERCISE_CATEGORIES` di `lib/constants/exercises.ts`, atau teks bebas dari opsi "Lainnya (Custom)".
 - **date:** hanya tanggal (tanpa waktu) sebagai basis grouping & grafik.
 - **createdAt:** timestamp lengkap saat pencatatan.
+- **updatedAt:** timestamp terakhir diubah (untuk merge sinkronisasi, last-write-wins).
+
+> **Sinkronisasi:** struktur di atas juga direpresentasikan di Supabase (tabel `workouts` & `routine`, lihat `supabase/migrations/0001_init.sql`). Kolom `updated_at` di DB ↔ `updatedAt` di client. Data lama tanpa `updatedAt` diperlakukan sebagai `createdAt`.
 
 ```json
 // localStorage["gym_tracker_routine_v1"]
@@ -164,7 +177,7 @@ v      v                          |
 +----------------+      +------------------+
 ```
 
-- **Bottom navigation (mobile-first):** tab bawah tetap — **Beranda** (`/`), **Hari Ini** (`/today`), FAB **+ Tambah** (`/workout/new`), **Progres** (`/progress`).
+- **Bottom navigation (mobile-first):** tab bawah tetap — **Beranda** (`/`), **Hari Ini** (`/today`), FAB **+ Tambah** (`/workout/new`), **Progres** (`/progress`), **Profil** (`/account`).
 - **Hari Ini** memuat dua view (segmented control): **Latihan** (date picker + list latihan per tanggal + "Catat Latihan") dan **Rutin** (editor jadwal mingguan, simpan per hari). `/routine` redirect → `/today?view=rutin`.
 - **Progres** memuat dua view (segmented control): **Riwayat** (list histori + filter latihan/rentang tanggal + hapus) dan **Grafik** (chart beban per latihan). `/history` redirect → `/progress`.
 - Setelah simpan entri: kembali ke Dashboard.
@@ -206,13 +219,15 @@ v      v                          |
 - Perhitungan 1RM (Epley/Brzycki) & target progressive overload.
 - Template program latihan lanjutan (rotasi Push/Pull/Legs).
 - Prefill beban/repetisi/set dari sesi terakhir di shortcut "Catat Latihan" (sudah aktif di MVP F6).
-- Sinkronisasi cloud: Supabase / SQLite (multi-device).
+- Sinkronisasi cloud (Supabase + login) sudah aktif di MVP — lihat F7. Berikutnya: penyelesaian konflik yang lebih halus & sinkronisasi realtime.
 - Ekspor data (CSV/JSON) & backup.
 - Statistik lanjutan: volume mingguan, streak, kalender aktivitas.
 
 ## 13. Risiko & Asumsi
 
-- **Asumsi:** single user, data perangkat (browser) yang sama.
-- **Risiko LocalStorage:** kapasitas terbatas (±5MB) & tidak lintas perangkat — cukup untuk MVP, jadi alasan utama migrasi ke Supabase di fase berikutnya.
+- **Asumsi:** single user, bisa multi perangkat dengan akun yang sama.
+- **Risiko LocalStorage:** kapasitas terbatas (±5MB) — diatasi dengan sinkronisasi ke Supabase (F7); LocalStorage tetap menjadi cache offline.
+- **Risiko bentrok data:** ditangani sederhana dengan last-write-wins by `updated_at`; untuk single user risiko rendah.
 - **Risiko data korup:** ditangani dengan versioning & validasi saat load.
 - **Prasyarat PWA:** service worker & install hanya aktif di HTTPS (localhost dikecualikan). Perlu deploy (Vercel/Netlify) agar bisa di-install dari HP.
+- **Prasyarat sinkronisasi:** variabel env Supabase wajib diisi saat build Docker.

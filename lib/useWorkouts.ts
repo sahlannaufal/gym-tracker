@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { deleteWorkout, loadWorkouts, saveWorkout } from "./storage";
+import { requestSync } from "./sync";
 import type { Workout, WorkoutInput } from "./types";
 
 export function useWorkouts() {
@@ -16,11 +17,13 @@ export function useWorkouts() {
   const addWorkout = useCallback((input: WorkoutInput) => {
     const workout = saveWorkout(input);
     setWorkouts((prev) => [...prev, workout]);
+    requestSync();
   }, []);
 
   const removeWorkout = useCallback((id: string) => {
     deleteWorkout(id);
     setWorkouts((prev) => prev.filter((w) => w.id !== id));
+    requestSync();
   }, []);
 
   return { workouts, isLoaded, addWorkout, removeWorkout };

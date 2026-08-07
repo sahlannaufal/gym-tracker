@@ -9,6 +9,7 @@ import type {
 
 const STORAGE_KEY = "gym_tracker_workouts_v1";
 const STORE_VERSION = 1;
+const PENDING_DELETE_KEY = "gym_tracker_pending_delete_v1";
 
 const EMPTY_STORE: WorkoutStore = { version: STORE_VERSION, workouts: [] };
 
@@ -61,10 +62,12 @@ function persist(workouts: Workout[]): void {
 }
 
 export function saveWorkout(input: WorkoutInput): Workout {
+  const now = new Date().toISOString();
   const workout: Workout = {
     ...input,
     id: generateId(),
-    createdAt: new Date().toISOString(),
+    createdAt: now,
+    updatedAt: now,
   };
   persist([...loadWorkouts(), workout]);
   return workout;
@@ -72,6 +75,42 @@ export function saveWorkout(input: WorkoutInput): Workout {
 
 export function deleteWorkout(id: string): void {
   persist(loadWorkouts().filter((w) => w.id !== id));
+  addPendingDelete(id);
+}
+
+// Seluruh list diganti (dipakai hasil pull/merge sinkronisasi).
+export function replaceWorkouts(workouts: Workout[]): void {
+  persist(workouts);
+}
+
+// --- Antrian delete saat offline (tombstone untuk sinkronisasi) ---
+
+export function loadPendingDeletes(): string[] {
+  try {
+    const raw = localStorage.getItem(PENDING_DELETE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.filter((x) => typeof x === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+function persistPendingDeletes(ids: string[]): void {
+  try {
+    localStorage.setItem(PENDING_DELETE_KEY, JSON.stringify(ids));
+  } catch {
+    /* localStorage penuh/tidak tersedia — abaikan */
+  }
+}
+
+export function addPendingDelete(id: string): void {
+  const list = loadPendingDeletes();
+  if (!list.includes(id)) persistPendingDeletes([...list, id]);
+}
+
+export function removePendingDelete(id: string): void {
+  persistPendingDeletes(loadPendingDeletes().filter((x) => x !== id));
 }
 
 const ROUTINE_KEY = "gym_tracker_routine_v1";

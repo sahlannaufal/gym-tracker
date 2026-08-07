@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { loadRoutine, saveRoutine } from "./storage";
+import { requestSync } from "./sync";
 import type { Routine, Weekday } from "./types";
 
 export function useRoutine() {
@@ -19,6 +20,7 @@ export function useRoutine() {
         days: { ...base.days, [day]: exercises },
       };
       saveRoutine(next);
+      requestSync();
       return next;
     });
   }, []);

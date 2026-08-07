@@ -6,6 +6,7 @@ export interface Workout {
   sets: number;
   date: string;
   createdAt: string;
+  updatedAt?: string;
 }
 
 export type WorkoutInput = Omit<Workout, "id" | "createdAt">;
