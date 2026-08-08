@@ -45,7 +45,7 @@ function ExerciseCard({
           <p className="font-semibold text-gray-100">{name}</p>
           {totalSets > 0 && (
             <span className="rounded-full bg-lime-400/15 px-2 py-0.5 text-xs font-medium text-lime-400">
-              {totalSets} set
+              {totalSets}
             </span>
           )}
         </div>
