@@ -51,4 +51,5 @@ export const DAY_ORDER: Weekday[] = [
 export interface Routine {
   version: number;
   days: Record<Weekday, string[]>;
+  updatedAt?: string;
 }

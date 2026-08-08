@@ -21,6 +21,7 @@ export function useRoutine() {
       const next: Routine = {
         ...base,
         days: { ...base.days, [day]: exercises },
+        updatedAt: new Date().toISOString(),
       };
       saveRoutine(next);
       requestSync();

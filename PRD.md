@@ -110,7 +110,7 @@ Aplikasi web sederhana (MVP) untuk mencatat dan memantau progres latihan beban (
 
 - **Offline-first:** LocalStorage tetap sumber utama untuk UI; Supabase adalah cloud copy + identitas. PWA tetap berfungsi penuh tanpa koneksi.
 - **Login opsional** (email + password via Supabase Auth): tanpa login app tetap jalan (data lokal); dengan login data disinkronkan lintas perangkat.
-- **Sinkronisasi dua arah** (`lib/sync.ts`): antrian delete offline (tombstone) diproses dulu → upload workout lokal yang lebih baru (upsert by `id`) → pull server → merge **last-write-wins by `updated_at`** → tulis balik LocalStorage. Routine disinkronkan sebagai satu baris JSON per user.
+- **Sinkronisasi dua arah** (`lib/sync.ts`): antrian delete offline (tombstone) diproses dulu → upload workout lokal yang lebih baru (upsert by `id`) → pull server → merge **last-write-wins by `updated_at`** → tulis balik LocalStorage. Routine disinkronkan sebagai satu baris JSON per user dengan **last-write-wins by `updated_at`** (`updatedAt` disimpan lokal & server; perangkat baru tidak lagi menimpa data server dengan data kosong). Ada pending-sync retry bila ada perubahan selama sync berjalan.
 - **Trigger sync:** saat login/logout, event `online`, window focus, dan setelah setiap mutasi (add/hapus/set rutin) via `requestSync()`.
 - **Tabel Supabase** (`supabase/migrations/0001_init.sql`): `workouts` (`id text PK`, `user_id uuid` FK `auth.users`, kolom entri + `created_at`/`updated_at`) & `routine` (`id uuid PK = user_id`, `days jsonb`, `updated_at`), semuanya **RLS** (`auth.uid() = user_id`).
 - **Status sinkronisasi** tampil di halaman Profil (`/account`): belum tersinkron / menyinkronkan / tersinkron / gagal + tombol "Sinkronkan Sekarang" & "Keluar".
@@ -156,11 +156,13 @@ Aplikasi web sederhana (MVP) untuk mencatat dan memantau progres latihan beban (
     "kamis": [],
     "jumat": ["Deadlift"],
     "sabtu": []
-  }
+  },
+  "updatedAt": "2026-08-08T09:30:00.000Z"
 }
 ```
 
 - **days:** map `Weekday` (minggu–sabtu, indeks sama dengan `Date.getDay()`) → list nama latihan unik.
+- **updatedAt:** timestamp terakhir rutin diubah (untuk merge sinkronisasi rutin, last-write-wins by `updated_at`).
 
 ## 8. Alur Navigasi (Wireframe Teks)
 

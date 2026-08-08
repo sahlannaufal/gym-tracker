@@ -146,7 +146,11 @@ function normalizeRoutine(value: unknown): Routine {
         )
       : [];
   }
-  return { version: ROUTINE_VERSION, days };
+  const updatedAt =
+    typeof raw.updatedAt === "string" && raw.updatedAt.length > 0
+      ? raw.updatedAt
+      : undefined;
+  return { version: ROUTINE_VERSION, days, updatedAt };
 }
 
 export function loadRoutine(): Routine {
@@ -160,10 +164,12 @@ export function loadRoutine(): Routine {
 }
 
 export function saveRoutine(routine: Routine): void {
-  localStorage.setItem(
-    ROUTINE_KEY,
-    JSON.stringify({ version: ROUTINE_VERSION, days: routine.days })
-  );
+  const payload: Record<string, unknown> = {
+    version: ROUTINE_VERSION,
+    days: routine.days,
+  };
+  if (routine.updatedAt) payload.updatedAt = routine.updatedAt;
+  localStorage.setItem(ROUTINE_KEY, JSON.stringify(payload));
 }
 
 export function getDayExercises(day: Weekday, routine: Routine): string[] {

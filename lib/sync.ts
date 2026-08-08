@@ -100,6 +100,7 @@ async function getUserId(): Promise<string | null> {
 // ---------- Sync engine ----------
 
 let inFlight = false;
+let rerunRequested = false;
 
 /**
  * Sinkronisasi penuh dua arah (offline-first, last-write-wins by updated_at).
@@ -112,7 +113,11 @@ export async function syncAll(userId: string): Promise<void> {
     setStatus({ state: "unconfigured" });
     return;
   }
-  if (inFlight) return;
+  if (inFlight) {
+    // Ada perubahan baru selama sync berjalan -> jalankan sekali lagi setelah selesai.
+    rerunRequested = true;
+    return;
+  }
   inFlight = true;
   setStatus({ state: "syncing" });
   try {
@@ -170,7 +175,7 @@ export async function syncAll(userId: string): Promise<void> {
 
     replaceWorkouts([...merged.values()]);
 
-    // 5. Routine (satu baris per user) - Pull dulu dari server sebelum upsert
+    // 5. Routine (satu baris per user) - last-write-wins by updated_at
     const { data: routineRow, error: routinePullErr } = await supabase
       .from("routine")
       .select("days, updated_at")
@@ -179,19 +184,31 @@ export async function syncAll(userId: string): Promise<void> {
     if (routinePullErr) throw routinePullErr;
 
     const localRoutine = loadRoutine();
-    const hasLocalRoutine = Object.values(localRoutine.days).some((arr) => arr.length > 0);
+    const localHasContent = Object.values(localRoutine.days).some(
+      (arr) => arr.length > 0
+    );
+    const serverDays = (routineRow?.days ?? {}) as Routine["days"];
+    const serverHasContent = Object.values(serverDays).some(
+      (arr) => Array.isArray(arr) && arr.length > 0
+    );
+    const serverUpdatedAt = routineRow?.updated_at as string | undefined;
 
-    if (routineRow && routineRow.days) {
-      // Jika server punya data, gunakan data server (atau bisa ditambahkan logic last-write-wins jika local punya timestamp)
-      saveRoutine({ version: 1, days: routineRow.days as Routine["days"] });
-    } else if (hasLocalRoutine) {
-      // Jika server kosong tapi local ada isinya, upload ke server
+    // Local lebih baru / belum ada di server -> upload
+    const localUpdatedAt = localRoutine.updatedAt;
+    const localIsNewer =
+      !!localUpdatedAt &&
+      (!serverUpdatedAt || localUpdatedAt > serverUpdatedAt);
+
+    if (localHasContent && (!serverHasContent || localIsNewer)) {
       const { error: routineErr } = await supabase.from("routine").upsert({
         id: userId,
         days: localRoutine.days,
-        updated_at: new Date().toISOString(),
+        updated_at: localUpdatedAt ?? new Date().toISOString(),
       });
       if (routineErr) throw routineErr;
+    } else if (serverHasContent) {
+      // Server lebih baru -> tarik ke lokal (ikut sertakan timestamp server)
+      saveRoutine({ version: 1, days: serverDays, updatedAt: serverUpdatedAt });
     }
 
     setStatus({ state: "synced", lastSync: new Date().toISOString() });
@@ -199,6 +216,12 @@ export async function syncAll(userId: string): Promise<void> {
     setStatus({ state: "error" });
   } finally {
     inFlight = false;
+    // Jika ada permintaan sync baru selama proses berjalan, jalankan ulang
+    if (rerunRequested) {
+      rerunRequested = false;
+      setStatus({ state: "syncing" });
+      void syncAll(userId).catch(() => undefined);
+    }
   }
 }
 
