@@ -4,7 +4,8 @@ import Link from "next/link";
 import { useWorkouts } from "@/lib/useWorkouts";
 import { useRoutine } from "@/lib/useRoutine";
 import { WEEKDAYS } from "@/lib/types";
-import { formatDate } from "@/lib/format";
+import type { Workout } from "@/lib/types";
+import { currentWeekRange, formatDate } from "@/lib/format";
 
 function StatCard({
   label,
@@ -56,7 +57,9 @@ export default function Dashboard() {
     );
   }
 
-  const totalSets = workouts.reduce((acc, w) => acc + w.sets, 0);
+  const { monday, sunday } = currentWeekRange();
+  const weekWorkouts = workouts.filter((w) => w.date >= monday && w.date <= sunday);
+  const weekTotalSets = weekWorkouts.reduce((acc, w) => acc + w.sets, 0);
 
   const volumeByExercise = workouts.reduce<Record<string, number>>(
     (acc, w) => {
@@ -66,9 +69,16 @@ export default function Dashboard() {
     },
     {}
   );
-  const [topExercise, topVolume] = Object.entries(volumeByExercise).sort(
+  const [topExercise] = Object.entries(volumeByExercise).sort(
     (a, b) => b[1] - a[1]
   )[0];
+
+  const topMax = workouts.reduce<Workout | null>((best, w) => {
+    if (w.exercise !== topExercise) return best;
+    if (!best || w.weight > best.weight) return w;
+    if (w.weight === best.weight && w.reps > best.reps) return w;
+    return best;
+  }, null);
 
   const lastWorkout = [...workouts].sort(
     (a, b) =>
@@ -112,12 +122,16 @@ export default function Dashboard() {
       </div>
 
       <div className="grid grid-cols-2 gap-4">
-        <StatCard label="Total Workout" value={workouts.length} />
-        <StatCard label="Total Set" value={totalSets} />
+        <StatCard
+          label="Total Workout"
+          value={weekWorkouts.length}
+          sub="Minggu ini"
+        />
+        <StatCard label="Total Set" value={weekTotalSets} sub="Minggu ini" />
         <StatCard
           label="Latihan Terbanyak"
           value={topExercise}
-          sub={`${Math.round(topVolume)} kg total volume`}
+          sub={topMax ? `${topMax.weight} kg × ${topMax.reps} rep` : undefined}
         />
         <StatCard
           label="Workout Terakhir"
