@@ -105,8 +105,8 @@ export default function History() {
           </select>
         </div>
 
-        <div className="grid grid-cols-2 gap-3 sm:max-w-md">
-          <label className="block">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:max-w-md">
+          <label className="block min-w-0">
             <span className="mb-1.5 block text-sm font-medium text-gray-300">
               Dari Tanggal
             </span>
@@ -114,10 +114,10 @@ export default function History() {
               type="date"
               value={dateFrom}
               onChange={(e) => setDateFrom(e.target.value)}
-              className={selectClass}
+              className={`${selectClass} min-w-0`}
             />
           </label>
-          <label className="block">
+          <label className="block min-w-0">
             <span className="mb-1.5 block text-sm font-medium text-gray-300">
               Sampai Tanggal
             </span>
@@ -125,7 +125,7 @@ export default function History() {
               type="date"
               value={dateTo}
               onChange={(e) => setDateTo(e.target.value)}
-              className={selectClass}
+              className={`${selectClass} min-w-0`}
             />
           </label>
         </div>
