@@ -24,3 +24,7 @@ services:
 volumes:
   caddy_data:
   caddy_config:
+
+  networks:
+  default:
+    name: caddy_net
