@@ -36,6 +36,7 @@ Aplikasi web sederhana (MVP) untuk mencatat dan memantau progres latihan beban (
 - Halaman histori / log latihan.
 - Grafik progress beban sederhana.
 - Rutin latihan harian (jadwal mingguan + quick-log).
+- Rest timer setelah menyimpan workout (fullscreen, durasi bisa diubah).
 - Penyimpanan data LocalStorage.
 
 ### 5.2 Out-of-Scope (MVP)
@@ -43,7 +44,7 @@ Aplikasi web sederhana (MVP) untuk mencatat dan memantau progres latihan beban (
 - Autentikasi & multi-user.
 - Sinkronisasi cloud (Supabase/SQLite) — fase berikutnya.
 - Edit data yang sudah tersimpan.
-- Template program latihan lanjutan (rotasi Push/Pull/Legs) & rest timer.
+- Template program latihan lanjutan (rotasi Push/Pull/Legs).
 - Kategori otot / equipment, foto sebelum-sesudah.
 - Filtering lanjutan (rentang tanggal, musim, dll).
 
@@ -68,7 +69,7 @@ Aplikasi web sederhana (MVP) untuk mencatat dan memantau progres latihan beban (
   - **Set** — number, *required*, > 0.
   - **Tanggal** — date picker, *required*, default hari ini.
 - Validasi: latihan wajib dipilih (atau nama custom tidak boleh kosong); beban/repetisi/set harus angka > 0. Tampilkan pesan error inline.
-- Tombol **"Simpan"** menyimpan entri ke LocalStorage, lalu kembali ke halaman sebelumnya (dashboard/histori).
+- Tombol **"Simpan"** menyimpan entri ke LocalStorage, lalu muncul **rest timer** (lihat F8); aksi "Selesai" kembali ke Dashboard.
 - Tombol **"Batal"** kembali tanpa menyimpan.
 
 ### F3. Halaman Histori / Log Latihan
@@ -93,6 +94,7 @@ Aplikasi web sederhana (MVP) untuk mencatat dan memantau progres latihan beban (
 
 - Key workout: `gym_tracker_workouts_v1`.
 - Key rutin: `gym_tracker_routine_v1`.
+- Preferensi rest timer: `gym_tracker_rest_seconds_v1` (number, default 60) & `gym_tracker_rest_muted_v1` (boolean).
 - Struktur: array objek workout (lihat Data Model) + rutin harian.
 - Tambahkan **versi data** agar mudah dimigrasi ke depannya.
 - Handler saat JSON corrupt / tidak valid: reset data lama dengan aman tanpa crash.
@@ -115,6 +117,17 @@ Aplikasi web sederhana (MVP) untuk mencatat dan memantau progres latihan beban (
 - **Tabel Supabase** (`supabase/migrations/0001_init.sql`): `workouts` (`id text PK`, `user_id uuid` FK `auth.users`, kolom entri + `created_at`/`updated_at`) & `routine` (`id uuid PK = user_id`, `days jsonb`, `updated_at`), semuanya **RLS** (`auth.uid() = user_id`).
 - **Status sinkronisasi** tampil di halaman Profil (`/account`): belum tersinkron / menyinkronkan / tersinkron / gagal + tombol "Sinkronkan Sekarang" & "Keluar".
 - Env: `NEXT_PUBLIC_SUPABASE_URL` & `NEXT_PUBLIC_SUPABASE_ANON_KEY` (dibutuhkan saat build Docker).
+
+### F8. Rest Timer Setelah Menyimpan Workout
+
+- Setelah menekan **"Simpan"** pada form pencatatan, workout tersimpan lalu muncul **timer fullscreen** untuk menghitung waktu istirahat antar set.
+- Hitung mundur tampil besar (format `MM:SS`) + progress bar; auto-start saat muncul.
+- **Durasi dapat diubah** dengan stepper `-30s`/`+30s` dan preset `30 / 60 / 90 / 120` detik; **default 60 detik**. Pilihan tersimpan di LocalStorage (`gym_tracker_rest_seconds_v1`) dan dipakai sebagai default berikutnya.
+- Kontrol: **Jeda/Lanjut**, **Lewati** (langsung ke layar selesai tanpa sinyal), dan toggle **Suara Nyala/Mati** (`gym_tracker_rest_muted_v1`).
+- Saat selesai: notifikasi **beep via Web Audio API** + **vibrasi** (kecuali muted), lalu dua aksi:
+  - **"Catat Set Berikutnya"** — kembali ke form dengan nama latihan & tanggal dipertahankan, beban/repetisi/set dikosongkan (fokus ke field beban).
+  - **"Selesai"** — kembali ke Dashboard.
+- Timer berjalan penuh di client (tidak ada request jaringan), aman untuk mode offline/PWA.
 
 ## 7. Data Model
 

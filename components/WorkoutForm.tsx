@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useWorkouts } from "@/lib/useWorkouts";
 import { todayLocalISO } from "@/lib/format";
@@ -8,6 +8,7 @@ import {
   CUSTOM_EXERCISE_VALUE,
   EXERCISE_CATEGORIES,
 } from "@/lib/constants/exercises";
+import RestTimer from "./RestTimer";
 
 interface FormValues {
   exerciseSelect: string;
@@ -115,6 +116,8 @@ export default function WorkoutForm({
     };
   });
   const [errors, setErrors] = useState<FormErrors>({});
+  const [showRestTimer, setShowRestTimer] = useState(false);
+  const weightInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!isLoaded || !initialExercise) return;
@@ -178,7 +181,21 @@ export default function WorkoutForm({
       sets: Number(values.sets),
       date: values.date,
     });
-    router.push("/");
+    setShowRestTimer(true);
+  };
+
+  // Kembali ke form untuk mencatat set berikutnya: nama latihan & tanggal
+  // dipertahankan, beban/repetisi/set dikosongkan.
+  const handleLogAgain = () => {
+    setShowRestTimer(false);
+    setValues((prev) => ({
+      ...prev,
+      weight: "",
+      reps: "",
+      sets: "",
+    }));
+    setErrors({});
+    requestAnimationFrame(() => weightInputRef.current?.focus());
   };
 
   return (
@@ -228,6 +245,7 @@ export default function WorkoutForm({
         <Field label="Beban (kg)" htmlFor="weight" error={errors.weight}>
           <input
             id="weight"
+            ref={weightInputRef}
             type="number"
             inputMode="decimal"
             min="0"
@@ -294,6 +312,12 @@ export default function WorkoutForm({
           Batal
         </button>
       </div>
+
+      <RestTimer
+        open={showRestTimer}
+        onClose={() => router.push("/")}
+        onLogAgain={handleLogAgain}
+      />
     </form>
   );
 }

@@ -175,3 +175,52 @@ export function saveRoutine(routine: Routine): void {
 export function getDayExercises(day: Weekday, routine: Routine): string[] {
   return routine.days[day] ?? [];
 }
+
+// --- Preferensi rest timer (fullscreen countdown setelah menyimpan workout) ---
+
+const REST_SECONDS_KEY = "gym_tracker_rest_seconds_v1";
+const REST_MUTED_KEY = "gym_tracker_rest_muted_v1";
+export const DEFAULT_REST_SECONDS = 60;
+const MIN_REST_SECONDS = 1;
+const MAX_REST_SECONDS = 3600;
+
+export function loadRestSeconds(): number {
+  try {
+    const raw = localStorage.getItem(REST_SECONDS_KEY);
+    if (raw === null) return DEFAULT_REST_SECONDS;
+    const parsed = JSON.parse(raw);
+    if (typeof parsed !== "number" || !Number.isFinite(parsed)) {
+      return DEFAULT_REST_SECONDS;
+    }
+    return Math.min(MAX_REST_SECONDS, Math.max(MIN_REST_SECONDS, Math.round(parsed)));
+  } catch {
+    return DEFAULT_REST_SECONDS;
+  }
+}
+
+export function saveRestSeconds(seconds: number): void {
+  const clamped = Math.min(MAX_REST_SECONDS, Math.max(MIN_REST_SECONDS, Math.round(seconds)));
+  try {
+    localStorage.setItem(REST_SECONDS_KEY, JSON.stringify(clamped));
+  } catch {
+    /* localStorage tidak tersedia — abaikan */
+  }
+}
+
+export function loadRestMuted(): boolean {
+  try {
+    const raw = localStorage.getItem(REST_MUTED_KEY);
+    if (raw === null) return false;
+    return JSON.parse(raw) === true;
+  } catch {
+    return false;
+  }
+}
+
+export function saveRestMuted(muted: boolean): void {
+  try {
+    localStorage.setItem(REST_MUTED_KEY, JSON.stringify(muted));
+  } catch {
+    /* localStorage tidak tersedia — abaikan */
+  }
+}
