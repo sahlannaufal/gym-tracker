@@ -7,6 +7,9 @@ export const supabase: SupabaseClient | null =
   supabaseUrl && supabaseAnonKey
     ? createClient(supabaseUrl, supabaseAnonKey, {
         auth: {
+          // flowType implicit = link verifikasi email membawa token di hash
+          // fragment (#access_token=...&refresh_token=...).
+          flowType: "implicit",
           persistSession: true,
           autoRefreshToken: true,
           detectSessionInUrl: true,

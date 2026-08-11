@@ -38,9 +38,17 @@ export default function AuthForm() {
     setNotice("");
     try {
       if (mode === "signup") {
-        const { error } = await supabase.auth.signUp({ email, password });
+        const { error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            emailRedirectTo: `${window.location.origin}/auth/callback`,
+          },
+        });
         if (error) throw error;
-        setNotice("Akun dibuat. Cek email untuk konfirmasi, lalu masuk.");
+        setNotice(
+          "Akun dibuat. Cek email dan buka link verifikasi untuk menyelesaikan pendaftaran."
+        );
         setMode("login");
       } else {
         const { error } = await supabase.auth.signInWithPassword({
