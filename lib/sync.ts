@@ -173,6 +173,17 @@ export async function syncAll(userId: string): Promise<void> {
       if (upErr) throw upErr;
     }
 
+    // Jangan timpa LocalStorage dengan snapshot basi: jika ada workout yang
+    // disimpan selama sync berjalan, entri itu tidak ada di hasil merge dan
+    // akan hilang kalau langsung replaceWorkouts. Baca ulang state terbaru
+    // dan pertahankan workout baru tersebut (upload ditangani rerun berikutnya).
+    const latestLocal = loadWorkouts();
+    const mergedIds = new Set(merged.keys());
+    for (const w of latestLocal) {
+      if (!mergedIds.has(w.id) && !pending.has(w.id)) {
+        merged.set(w.id, w);
+      }
+    }
     replaceWorkouts([...merged.values()]);
 
     // 5. Routine (satu baris per user) - last-write-wins by updated_at

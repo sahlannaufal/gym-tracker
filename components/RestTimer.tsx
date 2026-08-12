@@ -8,7 +8,7 @@ import {
   saveRestSeconds,
 } from "@/lib/storage";
 
-const PRESETS = [30, 60, 90, 120];
+const DURATION_OPTIONS = [15, 30, 45, 60, 90, 120, 150, 180, 240, 300];
 const MAX_SECONDS = 3600;
 
 function clampSeconds(value: number): number {
@@ -143,15 +143,8 @@ export default function RestTimer({
     saveRestSeconds(next);
   };
 
-  const handleAdjust = (delta: number) => {
-    const nextRemaining = clampSeconds(remaining + delta);
-    const nextTotal = clampSeconds(total + delta);
-    setRemaining(nextRemaining);
-    setTotal(nextTotal);
-    setIsRunning(true);
-    setIsFinished(false);
-    signaledRef.current = false;
-    saveRestSeconds(nextTotal);
+  const handleDurationChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    handlePreset(Number(e.target.value));
   };
 
   const handleToggleMute = () => {
@@ -162,6 +155,9 @@ export default function RestTimer({
   };
 
   const progress = total > 0 ? Math.round((remaining / total) * 100) : 0;
+  const durationOptions = DURATION_OPTIONS.includes(total)
+    ? DURATION_OPTIONS
+    : [...DURATION_OPTIONS, total].sort((a, b) => a - b);
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-gray-950 px-6">
@@ -212,7 +208,22 @@ export default function RestTimer({
           </button>
         </div>
       ) : (
-        <div className="mt-10 flex flex-col items-center gap-4">
+        <div className="mt-10 flex flex-col items-center gap-5">
+          <label className="flex items-center gap-3">
+            <span className="text-sm font-medium text-gray-400">Durasi</span>
+            <select
+              value={total}
+              onChange={handleDurationChange}
+              className="rounded-xl border border-gray-700 bg-gray-900 px-4 py-2.5 text-gray-100 focus:border-lime-400 focus:outline-none focus:ring-1 focus:ring-lime-400"
+            >
+              {durationOptions.map((sec) => (
+                <option key={sec} value={sec}>
+                  {formatTime(sec)} ({sec} detik)
+                </option>
+              ))}
+            </select>
+          </label>
+
           <div className="flex gap-3">
             <button
               type="button"
@@ -228,40 +239,6 @@ export default function RestTimer({
             >
               Lewati
             </button>
-          </div>
-
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => handleAdjust(-30)}
-              className="rounded-lg border border-gray-700 px-4 py-2 font-medium text-gray-300 transition-colors hover:bg-gray-800"
-            >
-              -30s
-            </button>
-            <button
-              type="button"
-              onClick={() => handleAdjust(30)}
-              className="rounded-lg border border-gray-700 px-4 py-2 font-medium text-gray-300 transition-colors hover:bg-gray-800"
-            >
-              +30s
-            </button>
-          </div>
-
-          <div className="flex gap-2">
-            {PRESETS.map((sec) => (
-              <button
-                key={sec}
-                type="button"
-                onClick={() => handlePreset(sec)}
-                className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
-                  total === sec
-                    ? "bg-lime-400 text-gray-950"
-                    : "border border-gray-700 text-gray-300 hover:bg-gray-800"
-                }`}
-              >
-                {sec} dtk
-              </button>
-            ))}
           </div>
         </div>
       )}
