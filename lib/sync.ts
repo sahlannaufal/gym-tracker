@@ -173,14 +173,17 @@ export async function syncAll(userId: string): Promise<void> {
       if (upErr) throw upErr;
     }
 
-    // Jangan timpa LocalStorage dengan snapshot basi: jika ada workout yang
-    // disimpan selama sync berjalan, entri itu tidak ada di hasil merge dan
-    // akan hilang kalau langsung replaceWorkouts. Baca ulang state terbaru
-    // dan pertahankan workout baru tersebut (upload ditangani rerun berikutnya).
+    // Jangan timpa LocalStorage dengan snapshot basi: baca ulang state &
+    // tombstone terbaru. Item yang disimpan selama sync dipertahankan; item
+    // yang dihapus selama sync (tombstone baru belum diproses) dibuang dari
+    // hasil merge agar tidak tertulis kembali (dan tidak ter-upload ulang).
     const latestLocal = loadWorkouts();
-    const mergedIds = new Set(merged.keys());
+    const latestPending = new Set(loadPendingDeletes());
+    for (const id of [...merged.keys()]) {
+      if (latestPending.has(id)) merged.delete(id);
+    }
     for (const w of latestLocal) {
-      if (!mergedIds.has(w.id) && !pending.has(w.id)) {
+      if (!merged.has(w.id) && !latestPending.has(w.id)) {
         merged.set(w.id, w);
       }
     }
