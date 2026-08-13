@@ -38,7 +38,7 @@ export default function AuthForm() {
     setNotice("");
     try {
       if (mode === "signup") {
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: {
@@ -46,8 +46,17 @@ export default function AuthForm() {
           },
         });
         if (error) throw error;
+
+        // Konfirmasi email nonaktif -> signUp sudah mengembalikan session,
+        // langsung login tanpa perlu membuka link verifikasi.
+        if (data.session) {
+          requestSync();
+          router.push("/account");
+          return;
+        }
+
         setNotice(
-          "Akun dibuat. Cek email dan buka link verifikasi untuk menyelesaikan pendaftaran."
+          "Akun berhasil dibuat. Kamu bisa langsung masuk menggunakan email & password yang tadi didaftarkan."
         );
         setMode("login");
       } else {
