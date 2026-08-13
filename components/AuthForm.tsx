@@ -56,7 +56,7 @@ export default function AuthForm() {
         }
 
         setNotice(
-          "Akun berhasil dibuat. Kamu bisa langsung masuk menggunakan email & password yang tadi didaftarkan."
+          "Akun berhasil dibuat. Silakan klik link aktivasi yang dikirim ke email kamu untuk mengaktifkan akun, lalu masuk."
         );
         setMode("login");
       } else {
