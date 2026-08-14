@@ -37,6 +37,7 @@ Aplikasi web sederhana (MVP) untuk mencatat dan memantau progres latihan beban (
 - Grafik progress beban sederhana.
 - Rutin latihan harian (jadwal mingguan + quick-log).
 - Rest timer setelah menyimpan workout (fullscreen, durasi bisa diubah).
+- Riwayat pengukuran dan summary komposisi tubuh untuk pengguna yang login.
 - Penyimpanan data LocalStorage.
 
 ### 5.2 Out-of-Scope (MVP)
@@ -132,6 +133,14 @@ Aplikasi web sederhana (MVP) untuk mencatat dan memantau progres latihan beban (
 - Timer berjalan penuh di client (tidak ada request jaringan), aman untuk mode offline/PWA.
 - Pada form inline **Latihan Hari Ini**, timer dimulai manual melalui tombol **"Mulai Istirahat"** di dalam kartu latihan. Timer tampil sebagai panel floating di atas bottom navigation agar tetap terlihat saat collapse ditutup atau latihan lain dibuka. Panel menyediakan progress, jeda/lanjut, `-30s`/`+30s`, lewati, toggle suara, dan sinyal suara/vibrasi saat selesai; memulai timer dari latihan lain akan mereset timer aktif menggunakan durasi preferensi terakhir.
 
+### F9. Riwayat & Summary Komposisi Tubuh
+
+- Tersedia di halaman **Profil** hanya setelah pengguna login.
+- Form menyimpan tanggal pengukuran, berat (kg), tinggi (cm), body fat (%) opsional, dan muscle mass (kg) opsional.
+- Setiap pengukuran disimpan sebagai histori; tinggi pengukuran terakhir menjadi prefill berikutnya. Pengguna dapat menghapus entri.
+- Summary terbaru menampilkan BMI, perubahan berat, estimasi massa lemak, persentase massa otot, dan insight sederhana berdasarkan perubahan dari pengukuran sebelumnya. Insight bukan diagnosis medis dan angka smart scale dianjurkan untuk dibaca sebagai tren.
+- Offline-first dengan cache LocalStorage per `user_id`, pending-delete, dan sinkronisasi dua arah last-write-wins melalui tabel Supabase `body_measurements` dengan RLS. Migration upgrade: `supabase/migrations/0002_body_measurements.sql`.
+
 ## 7. Data Model
 
 ```json
@@ -157,6 +166,8 @@ Aplikasi web sederhana (MVP) untuk mencatat dan memantau progres latihan beban (
 - **date:** hanya tanggal (tanpa waktu) sebagai basis grouping & grafik.
 - **createdAt:** timestamp lengkap saat pencatatan.
 - **updatedAt:** timestamp terakhir diubah (untuk merge sinkronisasi, last-write-wins).
+
+Riwayat komposisi tubuh menggunakan model `BodyMeasurement`: `id`, `weightKg`, `heightCm`, `bodyFatPercentage?`, `muscleMassKg?`, `measuredAt`, `createdAt`, dan `updatedAt`. Cache lokal dipisahkan per akun dengan key `gym_tracker_body_measurements_v1_<user_id>`.
 
 > **Sinkronisasi:** struktur di atas juga direpresentasikan di Supabase (tabel `workouts` & `routine`, lihat `supabase/migrations/0001_init.sql`). Kolom `updated_at` di DB ↔ `updatedAt` di client. Data lama tanpa `updatedAt` diperlakukan sebagai `createdAt`.
 

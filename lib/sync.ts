@@ -8,6 +8,14 @@ import {
   saveRoutine,
 } from "./storage";
 import type { Routine, Workout } from "./types";
+import type { BodyMeasurement } from "./types";
+import {
+  loadBodyMeasurementDeletes,
+  loadBodyMeasurements,
+  notifyBodyMeasurementsChanged,
+  removeBodyMeasurementDelete,
+  replaceBodyMeasurements,
+} from "./bodyMeasurements";
 
 // ---------- Status sinkronisasi (pub-sub ringan untuk UI) ----------
 
@@ -86,6 +94,48 @@ function fromRow(r: WorkoutRow): Workout {
     date: r.date,
     createdAt: r.created_at,
     updatedAt: r.updated_at,
+  };
+}
+
+type BodyMeasurementRow = {
+  id: string;
+  user_id: string;
+  weight_kg: number;
+  height_cm: number;
+  body_fat_percentage: number | null;
+  muscle_mass_kg: number | null;
+  measured_at: string;
+  created_at: string;
+  updated_at: string;
+};
+
+function bodyMeasurementToRow(
+  item: BodyMeasurement,
+  userId: string,
+): BodyMeasurementRow {
+  return {
+    id: item.id,
+    user_id: userId,
+    weight_kg: item.weightKg,
+    height_cm: item.heightCm,
+    body_fat_percentage: item.bodyFatPercentage ?? null,
+    muscle_mass_kg: item.muscleMassKg ?? null,
+    measured_at: item.measuredAt,
+    created_at: item.createdAt,
+    updated_at: item.updatedAt,
+  };
+}
+
+function bodyMeasurementFromRow(row: BodyMeasurementRow): BodyMeasurement {
+  return {
+    id: row.id,
+    weightKg: row.weight_kg,
+    heightCm: row.height_cm,
+    bodyFatPercentage: row.body_fat_percentage ?? undefined,
+    muscleMassKg: row.muscle_mass_kg ?? undefined,
+    measuredAt: row.measured_at,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
   };
 }
 
@@ -224,6 +274,63 @@ export async function syncAll(userId: string): Promise<void> {
       // Server lebih baru -> tarik ke lokal (ikut sertakan timestamp server)
       saveRoutine({ version: 1, days: serverDays, updatedAt: serverUpdatedAt });
     }
+
+    // 6. Riwayat komposisi tubuh — cache lokal dipisahkan per user.
+    for (const id of loadBodyMeasurementDeletes(userId)) {
+      const { error: deleteError } = await supabase
+        .from("body_measurements")
+        .delete()
+        .eq("id", id)
+        .eq("user_id", userId);
+      if (!deleteError) removeBodyMeasurementDelete(userId, id);
+    }
+    const bodyPending = new Set(loadBodyMeasurementDeletes(userId));
+    const { data: bodyData, error: bodyError } = await supabase
+      .from("body_measurements")
+      .select("*")
+      .eq("user_id", userId);
+    if (bodyError) throw bodyError;
+
+    const bodyServerMap = new Map(
+      ((bodyData ?? []) as BodyMeasurementRow[]).map((row) => [row.id, row]),
+    );
+    const bodyMerged = new Map<string, BodyMeasurement>();
+    const bodyUpserts: BodyMeasurement[] = [];
+    for (const localItem of loadBodyMeasurements(userId)) {
+      if (bodyPending.has(localItem.id)) continue;
+      const serverItem = bodyServerMap.get(localItem.id);
+      if (!serverItem || localItem.updatedAt > serverItem.updated_at) {
+        bodyMerged.set(localItem.id, localItem);
+        bodyUpserts.push(localItem);
+      } else {
+        bodyMerged.set(localItem.id, bodyMeasurementFromRow(serverItem));
+      }
+      bodyServerMap.delete(localItem.id);
+    }
+    for (const serverItem of bodyServerMap.values()) {
+      if (!bodyPending.has(serverItem.id)) {
+        bodyMerged.set(serverItem.id, bodyMeasurementFromRow(serverItem));
+      }
+    }
+    for (const item of bodyUpserts) {
+      const { error: upsertError } = await supabase
+        .from("body_measurements")
+        .upsert(bodyMeasurementToRow(item, userId));
+      if (upsertError) throw upsertError;
+    }
+
+    // Pertahankan mutasi lokal yang terjadi ketika request sedang berjalan.
+    const latestBodyPending = new Set(loadBodyMeasurementDeletes(userId));
+    for (const id of [...bodyMerged.keys()]) {
+      if (latestBodyPending.has(id)) bodyMerged.delete(id);
+    }
+    for (const item of loadBodyMeasurements(userId)) {
+      if (!bodyMerged.has(item.id) && !latestBodyPending.has(item.id)) {
+        bodyMerged.set(item.id, item);
+      }
+    }
+    replaceBodyMeasurements(userId, [...bodyMerged.values()]);
+    notifyBodyMeasurementsChanged(userId);
 
     setStatus({ state: "synced", lastSync: new Date().toISOString() });
   } catch {

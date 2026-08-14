@@ -53,3 +53,19 @@ export interface Routine {
   days: Record<Weekday, string[]>;
   updatedAt?: string;
 }
+
+export interface BodyMeasurement {
+  id: string;
+  weightKg: number;
+  heightCm: number;
+  bodyFatPercentage?: number;
+  muscleMassKg?: number;
+  measuredAt: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type BodyMeasurementInput = Omit<
+  BodyMeasurement,
+  "id" | "createdAt" | "updatedAt"
+>;

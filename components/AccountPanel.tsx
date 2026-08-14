@@ -7,6 +7,7 @@ import { useAuth } from "@/lib/useAuth";
 import { isSyncConfigured, supabase } from "@/lib/supabase/client";
 import { requestSync } from "@/lib/sync";
 import SyncStatus from "./SyncStatus";
+import BodyCompositionPanel from "./BodyCompositionPanel";
 
 export default function AccountPanel() {
   const router = useRouter();
@@ -61,6 +62,7 @@ export default function AccountPanel() {
   };
 
   return (
+    <div className="space-y-5">
     <div className="space-y-5 rounded-2xl border border-gray-800 bg-gray-900/50 p-5">
       <div>
         <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
@@ -88,6 +90,8 @@ export default function AccountPanel() {
           Keluar
         </button>
       </div>
+    </div>
+    <BodyCompositionPanel userId={user.id} />
     </div>
   );
 }
