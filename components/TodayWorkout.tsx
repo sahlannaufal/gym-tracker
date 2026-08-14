@@ -1,46 +1,183 @@
 "use client";
 
-import { useState } from "react";
-import Link from "next/link";
+import { useEffect, useState } from "react";
 import { useRoutine } from "@/lib/useRoutine";
 import { useWorkouts } from "@/lib/useWorkouts";
 import { DAY_LABELS } from "@/lib/types";
 import { formatDate, todayLocalISO, weekdayFromISO } from "@/lib/format";
-import type { Workout } from "@/lib/types";
+import type { Workout, WorkoutInput } from "@/lib/types";
+import FloatingRestTimer from "./FloatingRestTimer";
 
 const inputClass =
   "w-full rounded-xl border border-gray-700 bg-gray-900 px-4 py-2.5 text-gray-100 " +
   "placeholder-gray-500 focus:border-lime-400 focus:outline-none focus:ring-1 focus:ring-lime-400";
 
-function formatTime(iso: string): string {
-  return new Date(iso).toLocaleTimeString("id-ID", {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
+type SetRow = {
+  key: string;
+  workoutId?: string;
+  weight: string;
+  reps: string;
+};
 
 function ExerciseCard({
   name,
   entries,
+  lastWorkout,
+  date,
+  onAdd,
+  onUpdate,
   onDelete,
+  onStartRest,
 }: {
   name: string;
   entries: Workout[];
+  lastWorkout?: Workout;
+  date: string;
+  onAdd: (input: WorkoutInput) => Workout;
+  onUpdate: (
+    id: string,
+    changes: Pick<Workout, "weight" | "reps">,
+  ) => Workout | null;
   onDelete: (id: string) => void;
+  onStartRest: (exercise: string) => void;
 }) {
   const [open, setOpen] = useState(false);
+  const [rows, setRows] = useState<SetRow[]>([]);
+  const [error, setError] = useState("");
+  const entriesKey = entries
+    .map((entry) => `${entry.id}:${entry.updatedAt ?? entry.createdAt}`)
+    .join("|");
 
-  const totalSets = entries.reduce((sum, w) => sum + w.sets, 0);
+  useEffect(() => {
+    const savedRows = [...entries]
+      .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+      .map((entry) => ({
+        key: entry.id,
+        workoutId: entry.id,
+        weight: String(entry.weight),
+        reps: String(entry.reps),
+      }));
 
-  const handleDelete = (id: string) => {
-    if (window.confirm("Hapus entri latihan ini?")) {
-      onDelete(id);
+    setRows(
+      savedRows.length > 0
+        ? savedRows
+        : [
+            {
+              key: `draft-${date}-${name}`,
+              weight: lastWorkout ? String(lastWorkout.weight) : "",
+              reps: lastWorkout ? String(lastWorkout.reps) : "",
+            },
+          ],
+    );
+    setError("");
+  }, [date, name, entriesKey, lastWorkout?.id, lastWorkout?.weight, lastWorkout?.reps]);
+
+  const totalSets = entries.reduce((sum, workout) => sum + workout.sets, 0);
+
+  const valuesFor = (row: SetRow) => {
+    const weight = Number(row.weight);
+    const reps = Number(row.reps);
+    return {
+      weight,
+      reps,
+      valid:
+        Number.isFinite(weight) &&
+        weight > 0 &&
+        Number.isInteger(reps) &&
+        reps > 0,
+    };
+  };
+
+  const persistRow = (row: SetRow): Workout | null => {
+    const values = valuesFor(row);
+    if (!values.valid) {
+      setError("Beban dan repetisi harus lebih dari 0.");
+      return null;
     }
+
+    setError("");
+    if (row.workoutId) {
+      return onUpdate(row.workoutId, {
+        weight: values.weight,
+        reps: values.reps,
+      });
+    }
+
+    const saved = onAdd({
+      exercise: name,
+      weight: values.weight,
+      reps: values.reps,
+      sets: 1,
+      date,
+    });
+    setRows((current) =>
+      current.map((item) =>
+        item.key === row.key
+          ? { ...item, key: saved.id, workoutId: saved.id }
+          : item,
+      ),
+    );
+    return saved;
+  };
+
+  const updateRow = (key: string, field: "weight" | "reps", value: string) => {
+    setRows((current) =>
+      current.map((row) => (row.key === key ? { ...row, [field]: value } : row)),
+    );
+    setError("");
+  };
+
+  const addRow = () => {
+    const previous = rows.at(-1);
+    if (!previous) return;
+
+    const savedPrevious = persistRow(previous);
+    if (!savedPrevious) return;
+
+    const added = onAdd({
+      exercise: name,
+      weight: savedPrevious.weight,
+      reps: savedPrevious.reps,
+      sets: 1,
+      date,
+    });
+    setRows((current) => [
+      ...current.map((row) =>
+        row.key === previous.key
+          ? { ...row, key: savedPrevious.id, workoutId: savedPrevious.id }
+          : row,
+      ),
+      {
+        key: added.id,
+        workoutId: added.id,
+        weight: String(added.weight),
+        reps: String(added.reps),
+      },
+    ]);
+  };
+
+  const removeRow = (row: SetRow) => {
+    if (row.workoutId) {
+      if (!window.confirm(`Hapus set latihan ${name} ini?`)) return;
+      onDelete(row.workoutId);
+    }
+
+    setRows((current) => {
+      const remaining = current.filter((item) => item.key !== row.key);
+      return remaining.length > 0
+        ? remaining
+        : [{ key: `draft-${Date.now()}`, weight: "", reps: "" }];
+    });
   };
 
   return (
     <li className="rounded-xl border border-gray-800 bg-gray-900/50 p-4">
-      <div className="flex items-center justify-between gap-3">
+      <button
+        type="button"
+        onClick={() => setOpen((current) => !current)}
+        aria-expanded={open}
+        className="flex w-full items-center justify-between gap-3 text-left"
+      >
         <div className="flex items-center gap-2">
           <p className="font-semibold text-gray-100">{name}</p>
           {totalSets > 0 && (
@@ -49,69 +186,99 @@ function ExerciseCard({
             </span>
           )}
         </div>
-        <div className="flex shrink-0 items-center gap-2">
-          <Link
-            href={`/workout/new?exercise=${encodeURIComponent(name)}`}
-            className="rounded-xl border border-lime-400/50 px-3 py-2 text-sm font-semibold text-lime-400 transition-colors hover:bg-lime-400 hover:text-gray-950"
+        <span
+          className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-gray-700 text-gray-400 transition-transform ${
+            open ? "rotate-180" : ""
+          }`}
+        >
+          <svg
+            className="h-4 w-4"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
           >
-            Catat Latihan
-          </Link>
-          <button
-            type="button"
-            onClick={() => setOpen((prev) => !prev)}
-            aria-expanded={open}
-            aria-label={`Riwayat ${name}`}
-            className={`flex h-9 w-9 items-center justify-center rounded-xl border border-gray-700 text-gray-400 transition-colors hover:bg-gray-800 hover:text-white ${
-              open ? "rotate-180" : ""
-            }`}
-          >
-            <svg
-              className="h-4 w-4"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="m6 9 6 6 6-6" />
-            </svg>
-          </button>
-        </div>
-      </div>
+            <path d="m6 9 6 6 6-6" />
+          </svg>
+        </span>
+      </button>
 
       {open && (
-        <div className="mt-3 border-t border-gray-800 pt-3">
-          {entries.length === 0 ? (
-            <p className="text-sm text-gray-500">
-              Belum ada catatan latihan untuk hari ini.
-            </p>
-          ) : (
-            <ul className="space-y-1.5">
-              {[...entries]
-                .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
-                .map((w) => (
-                  <li
-                    key={w.id}
-                    className="flex items-center justify-between gap-3 rounded-lg bg-gray-950/60 px-3 py-2 text-sm"
-                  >
-                    <p className="text-gray-300">
-                      <span className="mr-2 text-xs text-gray-500">
-                        {formatTime(w.createdAt)}
-                      </span>
-                      {w.weight} kg × {w.reps} rep × {w.sets} set
-                    </p>
-                    <button
-                      onClick={() => handleDelete(w.id)}
-                      aria-label={`Hapus entri ${name}`}
-                      className="shrink-0 text-xs font-medium text-red-400 transition-colors hover:text-red-300"
-                    >
-                      Hapus
-                    </button>
-                  </li>
-                ))}
-            </ul>
-          )}
+        <div className="mt-4 border-t border-gray-800 pt-4">
+          <div className="grid grid-cols-[2.5rem_1fr_1fr_2rem] items-center gap-2 text-xs font-medium uppercase tracking-wide text-gray-500">
+            <span>Set</span>
+            <span>Kg</span>
+            <span>Reps</span>
+            <span />
+          </div>
+
+          <div className="mt-2 space-y-2">
+            {rows.map((row, index) => (
+              <div
+                key={row.key}
+                className="grid grid-cols-[2.5rem_1fr_1fr_2rem] items-center gap-2 rounded-xl bg-gray-950/60 p-2"
+              >
+                <span className="text-center font-semibold text-gray-300">
+                  {index + 1}
+                </span>
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  min="0.1"
+                  step="0.1"
+                  value={row.weight}
+                  onChange={(event) => updateRow(row.key, "weight", event.target.value)}
+                  onBlur={() => persistRow(row)}
+                  aria-label={`Beban set ${index + 1}`}
+                  placeholder="0"
+                  className="min-w-0 rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-center text-gray-100 focus:border-lime-400 focus:outline-none"
+                />
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  min="1"
+                  step="1"
+                  value={row.reps}
+                  onChange={(event) => updateRow(row.key, "reps", event.target.value)}
+                  onBlur={() => persistRow(row)}
+                  aria-label={`Repetisi set ${index + 1}`}
+                  placeholder="0"
+                  className="min-w-0 rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-center text-gray-100 focus:border-lime-400 focus:outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={() => removeRow(row)}
+                  aria-label={`Hapus set ${index + 1}`}
+                  className="text-xl text-gray-500 transition-colors hover:text-red-400"
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+
+          <button
+            type="button"
+            onClick={addRow}
+            className="mt-3 w-full rounded-xl border border-dashed border-gray-700 py-2.5 text-sm font-semibold text-gray-300 transition-colors hover:border-lime-400/60 hover:text-lime-400"
+          >
+            + Tambah Set
+          </button>
+
+          <button
+            type="button"
+            onClick={() => onStartRest(name)}
+            className="mt-2 w-full rounded-xl bg-lime-400 py-2.5 text-sm font-semibold text-gray-950 transition-colors hover:bg-lime-300"
+          >
+            Mulai Istirahat
+          </button>
+
+          {error && <p className="mt-2 text-sm text-red-400">{error}</p>}
+          <p className="mt-2 text-center text-xs text-gray-500">
+            Perubahan tersimpan otomatis.
+          </p>
         </div>
       )}
     </li>
@@ -124,9 +291,17 @@ export default function TodayWorkout({
   onOpenRoutine: () => void;
 }) {
   const { routine } = useRoutine();
-  const { workouts, removeWorkout } = useWorkouts();
+  const { workouts, addWorkout, updateWorkout, removeWorkout } = useWorkouts();
   const [date, setDate] = useState(todayLocalISO());
-  const [expanded, setExpanded] = useState<string | null>(null);
+  const [timerOpen, setTimerOpen] = useState(false);
+  const [timerExercise, setTimerExercise] = useState<string>();
+  const [timerRestartKey, setTimerRestartKey] = useState(0);
+
+  const startRestTimer = (exercise: string) => {
+    setTimerExercise(exercise);
+    setTimerRestartKey((current) => current + 1);
+    setTimerOpen(true);
+  };
 
   if (!routine) {
     return <p className="text-gray-500">Memuat...</p>;
@@ -134,9 +309,8 @@ export default function TodayWorkout({
 
   const day = weekdayFromISO(date);
   const exercises = routine.days[day] ?? [];
-
   const entriesFor = (name: string) =>
-    workouts.filter((w) => w.exercise === name && w.date === date);
+    workouts.filter((workout) => workout.exercise === name && workout.date === date);
 
   return (
     <section className="space-y-6">
@@ -153,19 +327,14 @@ export default function TodayWorkout({
           type="date"
           value={date}
           max={todayLocalISO()}
-          onChange={(e) => {
-            setDate(e.target.value || todayLocalISO());
-            setExpanded(null);
-          }}
+          onChange={(event) => setDate(event.target.value || todayLocalISO())}
           className={inputClass}
         />
       </label>
 
       {exercises.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-gray-700 p-8 text-center">
-          <p className="text-gray-300">
-            Belum ada rutin untuk {DAY_LABELS[day]}.
-          </p>
+          <p className="text-gray-300">Belum ada rutin untuk {DAY_LABELS[day]}.</p>
           <p className="mt-1 text-sm text-gray-500">
             Atur jadwal mingguanmu supaya konsisten.
           </p>
@@ -184,11 +353,29 @@ export default function TodayWorkout({
               key={name}
               name={name}
               entries={entriesFor(name)}
+              lastWorkout={[...workouts]
+                .filter((workout) => workout.exercise === name && workout.date <= date)
+                .sort(
+                  (a, b) =>
+                    b.date.localeCompare(a.date) ||
+                    b.createdAt.localeCompare(a.createdAt),
+                )[0]}
+              date={date}
+              onAdd={addWorkout}
+              onUpdate={updateWorkout}
               onDelete={removeWorkout}
+              onStartRest={startRestTimer}
             />
           ))}
         </ul>
       )}
+
+      <FloatingRestTimer
+        open={timerOpen}
+        restartKey={timerRestartKey}
+        exercise={timerExercise}
+        onClose={() => setTimerOpen(false)}
+      />
     </section>
   );
 }

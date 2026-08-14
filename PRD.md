@@ -103,8 +103,8 @@ Aplikasi web sederhana (MVP) untuk mencatat dan memantau progres latihan beban (
 
 - Atur jadwal **mingguan tetap** (Senin–Minggu): tiap hari berisi list latihan (dari `EXERCISE_CATEGORIES` atau nama custom).
 - Editor rutin (`/routine`): tambah/hapus hanya mengubah **draft lokal** per hari → ada tombol **"Simpan"** per hari (persist via `setDayExercises`) dengan indikator "Belum disimpan" / "✓ Tersimpan". Bukan auto-save global.
-- Halaman **"Latihan Hari Ini"** (`/today`) menampilkan list latihan berdasarkan tanggal terpilih (date picker, default hari ini; label nama hari). Tiap latihan punya tombol **"Catat Latihan"** → shortcut ke `/workout/new?exercise=<nama>`, di mana nama latihan ter-pilih otomatis dan **beban/repetisi/set di-prefill dari sesi terakhir** latihan tersebut (tanggal tetap hari ini). Tombol "Set Latihan Harian" → `/routine`.
-- Tiap latihan di list menampilkan **badge jumlah set** pada tanggal terpilih, dan tombol **dropdown (chevron)** untuk **expand riwayat progres latihan itu di tanggal tersebut** (entri per jam: beban × rep × set + aksi hapus).
+- Halaman **"Latihan Hari Ini"** (`/today`) menampilkan list latihan berdasarkan tanggal terpilih (date picker, default hari ini; label nama hari). Saat kartu latihan dibuka, form pencatatan set tampil langsung secara inline: tiap baris berisi beban (kg) dan repetisi, data sesi terakhir menjadi prefill awal, serta tombol **"Tambah Set"** membuat dan langsung menyimpan baris baru dengan nilai dari baris sebelumnya. Perubahan nilai disimpan otomatis saat input selesai diedit; tidak ada tombol simpan terpisah. Tombol "Set Latihan Harian" membuka view editor rutin.
+- Tiap latihan di list menampilkan **badge jumlah set** pada tanggal terpilih. Baris pada form inline sekaligus merepresentasikan histori set di tanggal tersebut; ikon **×** menghapus workout tersimpan beserta tombstone sinkronisasinya.
 - Dashboard menampilkan kartu ringkas "Latihan Hari Ini" (jumlah latihan) → tombol "Isi Sekarang" / "Set Latihan Harian".
 - Empty state: hari tanpa rutin menampilkan link ke editor rutin.
 
@@ -130,6 +130,7 @@ Aplikasi web sederhana (MVP) untuk mencatat dan memantau progres latihan beban (
   - **"Catat Set Berikutnya"** — kembali ke form dengan nama latihan & tanggal dipertahankan, beban/repetisi/set dikosongkan (fokus ke field beban).
   - **"Selesai"** — kembali ke Dashboard.
 - Timer berjalan penuh di client (tidak ada request jaringan), aman untuk mode offline/PWA.
+- Pada form inline **Latihan Hari Ini**, timer dimulai manual melalui tombol **"Mulai Istirahat"** di dalam kartu latihan. Timer tampil sebagai panel floating di atas bottom navigation agar tetap terlihat saat collapse ditutup atau latihan lain dibuka. Panel menyediakan progress, jeda/lanjut, `-30s`/`+30s`, lewati, toggle suara, dan sinyal suara/vibrasi saat selesai; memulai timer dari latihan lain akan mereset timer aktif menggunakan durasi preferensi terakhir.
 
 ## 7. Data Model
 

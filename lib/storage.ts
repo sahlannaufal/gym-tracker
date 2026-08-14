@@ -73,6 +73,23 @@ export function saveWorkout(input: WorkoutInput): Workout {
   return workout;
 }
 
+export function updateWorkout(
+  id: string,
+  changes: Pick<Workout, "weight" | "reps">,
+): Workout | null {
+  const workouts = loadWorkouts();
+  const current = workouts.find((workout) => workout.id === id);
+  if (!current) return null;
+
+  const updated: Workout = {
+    ...current,
+    ...changes,
+    updatedAt: new Date().toISOString(),
+  };
+  persist(workouts.map((workout) => (workout.id === id ? updated : workout)));
+  return updated;
+}
+
 export function deleteWorkout(id: string): void {
   persist(loadWorkouts().filter((w) => w.id !== id));
   addPendingDelete(id);
