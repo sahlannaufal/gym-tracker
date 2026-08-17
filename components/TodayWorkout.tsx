@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRoutine } from "@/lib/useRoutine";
+import { useTrainingPrograms } from "@/lib/useTrainingPrograms";
 import { useWorkouts } from "@/lib/useWorkouts";
 import { DAY_LABELS } from "@/lib/types";
 import { formatDate, todayLocalISO, weekdayFromISO } from "@/lib/format";
@@ -286,11 +286,11 @@ function ExerciseCard({
 }
 
 export default function TodayWorkout({
-  onOpenRoutine,
+  onOpenPrograms,
 }: {
-  onOpenRoutine: () => void;
+  onOpenPrograms: () => void;
 }) {
-  const { routine } = useRoutine();
+  const { store, setAssignment, clearAssignment } = useTrainingPrograms();
   const { workouts, addWorkout, updateWorkout, removeWorkout } = useWorkouts();
   const [date, setDate] = useState(todayLocalISO());
   const [timerOpen, setTimerOpen] = useState(false);
@@ -303,12 +303,16 @@ export default function TodayWorkout({
     setTimerOpen(true);
   };
 
-  if (!routine) {
+  if (!store) {
     return <p className="text-gray-500">Memuat...</p>;
   }
 
   const day = weekdayFromISO(date);
-  const exercises = routine.days[day] ?? [];
+  const assignment = store.schedule[date];
+  const selectedProgram = assignment?.programId
+    ? store.programs.find((program) => program.id === assignment.programId)
+    : undefined;
+  const exercises = selectedProgram?.exercises ?? [];
   const entriesFor = (name: string) =>
     workouts.filter((workout) => workout.exercise === name && workout.date === date);
 
@@ -326,26 +330,56 @@ export default function TodayWorkout({
         <input
           type="date"
           value={date}
-          max={todayLocalISO()}
           onChange={(event) => setDate(event.target.value || todayLocalISO())}
           className={inputClass}
         />
       </label>
 
-      {exercises.length === 0 ? (
+      <div className="rounded-2xl border border-gray-800 bg-gray-900/50 p-4">
+        <label className="block">
+          <span className="mb-1 block text-sm text-gray-400">Program untuk tanggal ini</span>
+          <select
+            value={!assignment ? "" : assignment.programId ?? "__rest__"}
+            onChange={(event) => {
+              const value = event.target.value;
+              if (!value) clearAssignment(date);
+              else setAssignment(date, value === "__rest__" ? null : value);
+            }}
+            className={inputClass}
+          >
+            <option value="">Belum dipilih</option>
+            <option value="__rest__">Rest Day</option>
+            {store.programs.map((program) => (
+              <option key={program.id} value={program.id}>{program.name}</option>
+            ))}
+          </select>
+        </label>
+        {selectedProgram && (
+          <p className="mt-2 text-sm text-lime-400">{selectedProgram.name} · {selectedProgram.exercises.length} latihan</p>
+        )}
+      </div>
+
+      {!assignment ? (
         <div className="rounded-2xl border border-dashed border-gray-700 p-8 text-center">
-          <p className="text-gray-300">Belum ada rutin untuk {DAY_LABELS[day]}.</p>
+          <p className="text-gray-300">Belum ada program yang dipilih.</p>
           <p className="mt-1 text-sm text-gray-500">
-            Atur jadwal mingguanmu supaya konsisten.
+            Pilih program di atas atau buat program latihan baru.
           </p>
           <button
             type="button"
-            onClick={onOpenRoutine}
+            onClick={onOpenPrograms}
             className="mt-5 inline-block rounded-xl bg-lime-400 px-5 py-3 font-semibold text-gray-950 transition-colors hover:bg-lime-300"
           >
-            Set Latihan Harian
+            Kelola Program
           </button>
         </div>
+      ) : assignment.programId === null ? (
+        <div className="rounded-2xl border border-dashed border-gray-700 p-8 text-center">
+          <p className="text-lg font-semibold text-gray-200">Rest Day</p>
+          <p className="mt-1 text-sm text-gray-500">Tidak ada latihan yang dijadwalkan pada tanggal ini.</p>
+        </div>
+      ) : !selectedProgram ? (
+        <div className="rounded-2xl border border-dashed border-red-900/70 p-8 text-center text-red-300">Program tidak ditemukan. Silakan pilih program lain.</div>
       ) : (
         <ul className="space-y-3">
           {exercises.map((name) => (

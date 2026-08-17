@@ -6,6 +6,6 @@ export default async function TodayRoute({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const params = await searchParams;
-  const initialView = params.view === "rutin" ? "rutin" : "latihan";
+  const initialView = params.view === "program" || params.view === "rutin" ? "program" : "latihan";
   return <TodayPage initialView={initialView} />;
 }

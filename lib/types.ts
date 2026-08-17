@@ -54,6 +54,26 @@ export interface Routine {
   updatedAt?: string;
 }
 
+export interface TrainingProgram {
+  id: string;
+  name: string;
+  exercises: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ProgramAssignment {
+  programId: string | null;
+  updatedAt: string;
+}
+
+export interface TrainingProgramStore {
+  version: number;
+  programs: TrainingProgram[];
+  schedule: Record<string, ProgramAssignment>;
+  updatedAt?: string;
+}
+
 export interface BodyMeasurement {
   id: string;
   weightKg: number;

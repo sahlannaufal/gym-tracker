@@ -1,6 +1,9 @@
-import { WEEKDAYS } from "./types";
+import { DAY_LABELS, DAY_ORDER, WEEKDAYS } from "./types";
 import type {
+  ProgramAssignment,
   Routine,
+  TrainingProgram,
+  TrainingProgramStore,
   Weekday,
   Workout,
   WorkoutInput,
@@ -191,6 +194,115 @@ export function saveRoutine(routine: Routine): void {
 
 export function getDayExercises(day: Weekday, routine: Routine): string[] {
   return routine.days[day] ?? [];
+}
+
+// --- Program latihan reusable + pilihan program per tanggal ---
+
+const TRAINING_PROGRAM_KEY = "gym_tracker_training_programs_v1";
+const TRAINING_PROGRAM_VERSION = 1;
+
+function emptyTrainingProgramStore(): TrainingProgramStore {
+  return { version: TRAINING_PROGRAM_VERSION, programs: [], schedule: {} };
+}
+
+function isISODate(value: string): boolean {
+  return /^\d{4}-\d{2}-\d{2}$/.test(value);
+}
+
+function normalizeTrainingProgram(value: unknown): TrainingProgram | null {
+  if (typeof value !== "object" || value === null) return null;
+  const raw = value as Record<string, unknown>;
+  if (
+    typeof raw.id !== "string" ||
+    !raw.id ||
+    typeof raw.name !== "string" ||
+    !raw.name.trim() ||
+    !Array.isArray(raw.exercises) ||
+    typeof raw.createdAt !== "string" ||
+    typeof raw.updatedAt !== "string"
+  ) return null;
+
+  return {
+    id: raw.id,
+    name: raw.name.trim(),
+    exercises: raw.exercises.filter(
+      (item): item is string => typeof item === "string" && item.trim().length > 0,
+    ),
+    createdAt: raw.createdAt,
+    updatedAt: raw.updatedAt,
+  };
+}
+
+function normalizeTrainingProgramStore(value: unknown): TrainingProgramStore {
+  if (typeof value !== "object" || value === null) return emptyTrainingProgramStore();
+  const raw = value as Record<string, unknown>;
+  const programs = Array.isArray(raw.programs)
+    ? raw.programs.map(normalizeTrainingProgram).filter((item): item is TrainingProgram => !!item)
+    : [];
+  const validIds = new Set(programs.map((program) => program.id));
+  const schedule: Record<string, ProgramAssignment> = {};
+  if (typeof raw.schedule === "object" && raw.schedule !== null) {
+    for (const [date, value] of Object.entries(raw.schedule as Record<string, unknown>)) {
+      if (!isISODate(date) || typeof value !== "object" || value === null) continue;
+      const assignment = value as Record<string, unknown>;
+      const programId = assignment.programId;
+      if (
+        (programId === null || (typeof programId === "string" && validIds.has(programId))) &&
+        typeof assignment.updatedAt === "string"
+      ) {
+        schedule[date] = { programId, updatedAt: assignment.updatedAt };
+      }
+    }
+  }
+  return {
+    version: TRAINING_PROGRAM_VERSION,
+    programs,
+    schedule,
+    updatedAt: typeof raw.updatedAt === "string" ? raw.updatedAt : undefined,
+  };
+}
+
+function migrateLegacyRoutine(): TrainingProgramStore {
+  const routine = loadRoutine();
+  const now = new Date().toISOString();
+  const programs = DAY_ORDER.flatMap((day) => {
+    const exercises = routine.days[day] ?? [];
+    return exercises.length > 0
+      ? [{
+          id: `legacy_${day}`,
+          name: `Rutin ${DAY_LABELS[day]}`,
+          exercises,
+          createdAt: routine.updatedAt ?? now,
+          updatedAt: routine.updatedAt ?? now,
+        }]
+      : [];
+  });
+  return {
+    version: TRAINING_PROGRAM_VERSION,
+    programs,
+    schedule: {},
+    updatedAt: programs.length > 0 ? now : undefined,
+  };
+}
+
+export function loadTrainingProgramStore(): TrainingProgramStore {
+  try {
+    const raw = localStorage.getItem(TRAINING_PROGRAM_KEY);
+    if (raw) return normalizeTrainingProgramStore(JSON.parse(raw));
+    const migrated = migrateLegacyRoutine();
+    localStorage.setItem(TRAINING_PROGRAM_KEY, JSON.stringify(migrated));
+    return migrated;
+  } catch {
+    return emptyTrainingProgramStore();
+  }
+}
+
+export function saveTrainingProgramStore(store: TrainingProgramStore): void {
+  localStorage.setItem(
+    TRAINING_PROGRAM_KEY,
+    JSON.stringify({ ...store, version: TRAINING_PROGRAM_VERSION }),
+  );
+  window.dispatchEvent(new Event("training-programs-changed"));
 }
 
 // --- Preferensi rest timer (fullscreen countdown setelah menyimpan workout) ---

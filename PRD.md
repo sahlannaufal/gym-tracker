@@ -35,7 +35,7 @@ Aplikasi web sederhana (MVP) untuk mencatat dan memantau progres latihan beban (
 - Form pencatatan workout.
 - Halaman histori / log latihan.
 - Grafik progress beban sederhana.
-- Rutin latihan harian (jadwal mingguan + quick-log).
+- Program latihan reusable + pemilihan program/rest day per tanggal + quick-log.
 - Rest timer setelah menyimpan workout (fullscreen, durasi bisa diubah).
 - Riwayat pengukuran dan summary komposisi tubuh untuk pengguna yang login.
 - Penyimpanan data LocalStorage.
@@ -94,28 +94,31 @@ Aplikasi web sederhana (MVP) untuk mencatat dan memantau progres latihan beban (
 ### F5. Penyimpanan LocalStorage
 
 - Key workout: `gym_tracker_workouts_v1`.
-- Key rutin: `gym_tracker_routine_v1`.
+- Key program latihan: `gym_tracker_training_programs_v1` (`gym_tracker_routine_v1` hanya dibaca untuk migrasi data lama).
 - Preferensi rest timer: `gym_tracker_rest_seconds_v1` (number, default 60) & `gym_tracker_rest_muted_v1` (boolean).
-- Struktur: array objek workout (lihat Data Model) + rutin harian.
+- Struktur: array objek workout (lihat Data Model) + program latihan + jadwal per tanggal.
 - Tambahkan **versi data** agar mudah dimigrasi ke depannya.
 - Handler saat JSON corrupt / tidak valid: reset data lama dengan aman tanpa crash.
 
-### F6. Rutin Latihan Harian
+### F6. Program Latihan & Jadwal Per Tanggal
 
-- Atur jadwal **mingguan tetap** (Senin–Minggu): tiap hari berisi list latihan (dari `EXERCISE_CATEGORIES` atau nama custom).
-- Editor rutin (`/routine`): tambah/hapus hanya mengubah **draft lokal** per hari → ada tombol **"Simpan"** per hari (persist via `setDayExercises`) dengan indikator "Belum disimpan" / "✓ Tersimpan". Bukan auto-save global.
-- Halaman **"Latihan Hari Ini"** (`/today`) menampilkan list latihan berdasarkan tanggal terpilih (date picker, default hari ini; label nama hari). Saat kartu latihan dibuka, form pencatatan set tampil langsung secara inline: tiap baris berisi beban (kg) dan repetisi, data sesi terakhir menjadi prefill awal, serta tombol **"Tambah Set"** membuat dan langsung menyimpan baris baru dengan nilai dari baris sebelumnya. Perubahan nilai disimpan otomatis saat input selesai diedit; tidak ada tombol simpan terpisah. Tombol "Set Latihan Harian" membuka view editor rutin.
+- Pengguna dapat membuat beberapa **program latihan reusable** dengan nama bebas dan daftar latihan dari `EXERCISE_CATEGORIES` atau nama custom. Program dapat dibuat, diedit, dan dihapus.
+- Editor **Program** tersedia sebagai view kedua di `/today` (`?view=program`). Route lama `/routine` dipertahankan sebagai redirect kompatibilitas ke view Program.
+- Halaman **"Latihan Hari Ini"** (`/today`) menyediakan date picker (default hari ini, dapat memilih tanggal mendatang), lalu pengguna memilih satu program untuk tanggal itu, memilih **Rest Day**, atau membiarkannya belum dipilih. Tidak ada jadwal mingguan/default otomatis pada versi ini.
+- Pemilihan program disimpan langsung per tanggal (`YYYY-MM-DD`). Mengganti pilihan tidak mengubah isi program atau histori workout yang sudah tercatat.
+- Setelah program dipilih, daftar latihannya tampil untuk tanggal tersebut. Saat kartu latihan dibuka, form pencatatan set tampil langsung secara inline: tiap baris berisi beban (kg) dan repetisi, data sesi terakhir menjadi prefill awal, serta tombol **"Tambah Set"** membuat dan langsung menyimpan baris baru dengan nilai dari baris sebelumnya. Perubahan nilai disimpan otomatis saat input selesai diedit; tidak ada tombol simpan terpisah.
 - Tiap latihan di list menampilkan **badge jumlah set** pada tanggal terpilih. Baris pada form inline sekaligus merepresentasikan histori set di tanggal tersebut; ikon **×** menghapus workout tersimpan beserta tombstone sinkronisasinya.
-- Dashboard menampilkan kartu ringkas "Latihan Hari Ini" (jumlah latihan) → tombol "Isi Sekarang" / "Set Latihan Harian".
-- Empty state: hari tanpa rutin menampilkan link ke editor rutin.
+- Dashboard menampilkan kartu ringkas "Latihan Hari Ini" berupa nama program + jumlah latihan, Rest Day, atau status belum memilih, dengan tombol menuju `/today`.
+- Empty state tanggal yang belum dipilih menampilkan link ke editor Program; Rest Day memiliki state khusus.
+- Migrasi lokal satu kali mengubah setiap hari pada rutin lama yang tidak kosong menjadi program bernama `Rutin <Nama Hari>` tanpa menjadwalkannya otomatis ke tanggal tertentu.
 
 ### F7. Sinkronisasi Cloud (Supabase) & Login
 
 - **Offline-first:** LocalStorage tetap sumber utama untuk UI; Supabase adalah cloud copy + identitas. PWA tetap berfungsi penuh tanpa koneksi.
 - **Login opsional** (email + password via Supabase Auth): tanpa login app tetap jalan (data lokal); dengan login data disinkronkan lintas perangkat.
 - **Sinkronisasi dua arah** (`lib/sync.ts`): antrian delete offline (tombstone) diproses dulu → upload workout lokal yang lebih baru (upsert by `id`) → pull server → merge **last-write-wins by `updated_at`** → tulis balik LocalStorage. Saat menulis balik, `loadWorkouts()` & `pending_deletes` dibaca ulang sehingga workout yang **disimpan** selama sync berjalan dipertahankan dan workout yang **dihapus** selama sync (tombstone baru) tidak ditulis kembali (sehingga tidak ter-upload ulang). Routine disinkronkan sebagai satu baris JSON per user dengan **last-write-wins by `updated_at`** (`updatedAt` disimpan lokal & server; perangkat baru tidak lagi menimpa data server dengan data kosong). Ada pending-sync retry bila ada perubahan selama sync berjalan.
-- **Trigger sync:** saat login/logout, event `online`, window focus, dan setelah setiap mutasi (add/hapus/set rutin) via `requestSync()`.
-- **Tabel Supabase** (`supabase/migrations/0001_init.sql`): `workouts` (`id text PK`, `user_id uuid` FK `auth.users`, kolom entri + `created_at`/`updated_at`) & `routine` (`id uuid PK = user_id`, `days jsonb`, `updated_at`), semuanya **RLS** (`auth.uid() = user_id`).
+- **Trigger sync:** saat login/logout, event `online`, window focus, dan setelah setiap mutasi (add/hapus workout, program, atau jadwal tanggal) via `requestSync()`.
+- **Tabel Supabase**: `workouts` (`id text PK`, `user_id uuid` FK `auth.users`, kolom entri + `created_at`/`updated_at`) & `routine` (`id uuid PK = user_id`; kolom legacy `days`/`updated_at`; kolom `programs`, `schedule`, dan `program_updated_at` dari `0003_training_programs.sql`), semuanya **RLS** (`auth.uid() = user_id`). Program dan jadwal disinkronkan sebagai satu dokumen dengan last-write-wins memakai `program_updated_at`.
 - **Status sinkronisasi** tampil di halaman Profil (`/account`): belum tersinkron / menyinkronkan / tersinkron / gagal + tombol "Sinkronkan Sekarang" & "Keluar".
 - **Verifikasi email (signup):** saat daftar, `signUp` mengirim `options.emailRedirectTo = <origin>/auth/callback` sehingga link konfirmasi mendarat di halaman client `/auth/callback` (bukan root `/`). Token verifikasi dibawa di hash fragment (`#access_token=...&refresh_token=...&type=signup`, flow **implicit** — eksplisit di `lib/supabase/client.ts` dengan `flowType: "implicit"` dan `detectSessionInUrl: true`); SDK auto-mendeteksi & menyimpan session saat bundle dimuat. Halaman `/auth/callback` menampilkan: loading → sukses (redirect ke `/account`) atau error (fragment `error`/`error_description`, mis. `otp_expired` → tampilkan pesan + kembali ke `/login`).
 - **Konfigurasi dashboard Supabase wajib:** Authentication → URL Configuration → **Site URL** = domain produksi, dan **Redirect URLs** berisi `https://<domain>/**` (produksi) + `http://localhost:3000/**` (dev). Tanpa ini `emailRedirectTo` diabaikan dan link email memakai Site URL yang terkonfigurasi (jika `http://localhost:3000`, link akan salah arah).
@@ -169,27 +172,38 @@ Aplikasi web sederhana (MVP) untuk mencatat dan memantau progres latihan beban (
 
 Riwayat komposisi tubuh menggunakan model `BodyMeasurement`: `id`, `weightKg`, `heightCm`, `bodyFatPercentage?`, `muscleMassKg?`, `measuredAt`, `createdAt`, dan `updatedAt`. Cache lokal dipisahkan per akun dengan key `gym_tracker_body_measurements_v1_<user_id>`.
 
-> **Sinkronisasi:** struktur di atas juga direpresentasikan di Supabase (tabel `workouts` & `routine`, lihat `supabase/migrations/0001_init.sql`). Kolom `updated_at` di DB ↔ `updatedAt` di client. Data lama tanpa `updatedAt` diperlakukan sebagai `createdAt`.
+> **Sinkronisasi:** workout direpresentasikan di tabel `workouts`. Program dan jadwal tanggal disimpan pada kolom JSONB tabel `routine` (migration `0003_training_programs.sql`). Kolom `updated_at`/`program_updated_at` di DB ↔ `updatedAt` di client.
 
 ```json
-// localStorage["gym_tracker_routine_v1"]
+// localStorage["gym_tracker_training_programs_v1"]
 {
   "version": 1,
-  "days": {
-    "minggu": [],
-    "senin": ["Bench Press (Barbell)", "Squat"],
-    "selasa": [],
-    "rabu": ["Pull-Up / Chin-Up"],
-    "kamis": [],
-    "jumat": ["Deadlift"],
-    "sabtu": []
+  "programs": [
+    {
+      "id": "p_1700000000000_abc123",
+      "name": "Push Day",
+      "exercises": ["Bench Press (Barbell)", "Shoulder Press", "Tricep Extension"],
+      "createdAt": "2026-08-17T09:30:00.000Z",
+      "updatedAt": "2026-08-17T09:30:00.000Z"
+    }
+  ],
+  "schedule": {
+    "2026-08-17": {
+      "programId": "p_1700000000000_abc123",
+      "updatedAt": "2026-08-17T09:35:00.000Z"
+    },
+    "2026-08-18": {
+      "programId": null,
+      "updatedAt": "2026-08-17T09:36:00.000Z"
+    }
   },
-  "updatedAt": "2026-08-08T09:30:00.000Z"
+  "updatedAt": "2026-08-17T09:36:00.000Z"
 }
 ```
 
-- **days:** map `Weekday` (minggu–sabtu, indeks sama dengan `Date.getDay()`) → list nama latihan unik.
-- **updatedAt:** timestamp terakhir rutin diubah (untuk merge sinkronisasi rutin, last-write-wins by `updated_at`).
+- **programs:** daftar paket latihan reusable. ID stabil dipakai oleh jadwal tanggal.
+- **schedule:** map tanggal `YYYY-MM-DD` → assignment. `programId: null` berarti Rest Day; key yang tidak ada berarti belum memilih program.
+- **updatedAt:** timestamp perubahan terakhir dokumen program/jadwal untuk sinkronisasi last-write-wins.
 
 ## 8. Alur Navigasi (Wireframe Teks)
 
@@ -202,15 +216,15 @@ Riwayat komposisi tubuh menggunakan model `BodyMeasurement`: `id`, `weightKg`, `
 v      v                          |
 +----------------+      +------------------+
 |   Hari Ini     |      |  Progres:        |
-|  Latihan | Rutin|      |  Riwayat | Grafik |
+| Latihan|Program|      |  Riwayat | Grafik |
 +----------------+      +------------------+
 ```
 
 - **Bottom navigation (mobile-first):** tab bawah tetap — **Beranda** (`/`), **Hari Ini** (`/today`), FAB **+ Tambah** (`/workout/new`), **Progres** (`/progress`), **Profil** (`/account`).
-- **Hari Ini** memuat dua view (segmented control): **Latihan** (date picker + list latihan per tanggal + "Catat Latihan") dan **Rutin** (editor jadwal mingguan, simpan per hari). `/routine` redirect → `/today?view=rutin`.
+- **Hari Ini** memuat dua view (segmented control): **Latihan** (date picker + pilihan program/Rest Day + quick-log) dan **Program** (buat/edit/hapus paket latihan). `/routine` redirect → `/today?view=program`.
 - **Progres** memuat dua view (segmented control): **Riwayat** (list histori + filter latihan/rentang tanggal + hapus) dan **Grafik** (chart beban per latihan). `/history` redirect → `/progress`.
 - Setelah simpan entri: kembali ke Dashboard.
-- Dashboard menampilkan kartu "Latihan Hari Ini" → `/today` (jika ada rutin) atau `/today?view=rutin` (jika belum).
+- Dashboard menampilkan kartu "Latihan Hari Ini" berisi nama program, jumlah latihan, Rest Day, atau status belum memilih → `/today`.
 
 ## 9. Non-Functional Requirements
 
@@ -231,7 +245,7 @@ v      v                          |
 | M3 | Dashboard ringkasan. |
 | M4 | Halaman histori + hapus entri. |
 | M5 | Grafik progress beban. |
-| M6 | Rutin latihan harian: editor jadwal mingguan (simpan per hari) + halaman "Latihan Hari Ini" per tanggal dengan shortcut "Catat Latihan" (prefill sesi terakhir). |
+| M6 | Program latihan reusable: CRUD program + pemilihan program/Rest Day per tanggal + halaman "Latihan Hari Ini" dengan quick-log (prefill sesi terakhir). |
 | M7 | Polish: empty state, error handling, testing, update PRD jika ada perubahan. |
 
 ## 11. Definition of Done
@@ -246,7 +260,7 @@ v      v                          |
 
 - Edit & duplikasi entri.
 - Perhitungan 1RM (Epley/Brzycki) & target progressive overload.
-- Template program latihan lanjutan (rotasi Push/Pull/Legs).
+- Default jadwal mingguan opsional dan rotasi program otomatis (mis. Push/Pull/Legs).
 - Prefill beban/repetisi/set dari sesi terakhir di shortcut "Catat Latihan" (sudah aktif di MVP F6).
 - Sinkronisasi cloud (Supabase + login) sudah aktif di MVP — lihat F7. Berikutnya: penyelesaian konflik yang lebih halus & sinkronisasi realtime.
 - Ekspor data (CSV/JSON) & backup.

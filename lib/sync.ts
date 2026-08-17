@@ -1,13 +1,13 @@
 import { isSyncConfigured, supabase } from "./supabase/client";
 import {
   loadPendingDeletes,
-  loadRoutine,
+  loadTrainingProgramStore,
   loadWorkouts,
   removePendingDelete,
   replaceWorkouts,
-  saveRoutine,
+  saveTrainingProgramStore,
 } from "./storage";
-import type { Routine, Workout } from "./types";
+import type { TrainingProgramStore, Workout } from "./types";
 import type { BodyMeasurement } from "./types";
 import {
   loadBodyMeasurementDeletes,
@@ -239,26 +239,23 @@ export async function syncAll(userId: string): Promise<void> {
     }
     replaceWorkouts([...merged.values()]);
 
-    // 5. Routine (satu baris per user) - last-write-wins by updated_at
+    // 5. Program latihan + pilihan per tanggal (satu dokumen per user).
     const { data: routineRow, error: routinePullErr } = await supabase
       .from("routine")
-      .select("days, updated_at")
+      .select("programs, schedule, program_updated_at")
       .eq("id", userId)
       .maybeSingle();
     if (routinePullErr) throw routinePullErr;
 
-    const localRoutine = loadRoutine();
-    const localHasContent = Object.values(localRoutine.days).some(
-      (arr) => arr.length > 0
-    );
-    const serverDays = (routineRow?.days ?? {}) as Routine["days"];
-    const serverHasContent = Object.values(serverDays).some(
-      (arr) => Array.isArray(arr) && arr.length > 0
-    );
-    const serverUpdatedAt = routineRow?.updated_at as string | undefined;
+    const localPrograms = loadTrainingProgramStore();
+    const localHasContent = localPrograms.programs.length > 0 || Object.keys(localPrograms.schedule).length > 0;
+    const serverPrograms = (routineRow?.programs ?? []) as TrainingProgramStore["programs"];
+    const serverSchedule = (routineRow?.schedule ?? {}) as TrainingProgramStore["schedule"];
+    const serverHasContent = serverPrograms.length > 0 || Object.keys(serverSchedule).length > 0;
+    const serverUpdatedAt = routineRow?.program_updated_at as string | undefined;
 
     // Local lebih baru / belum ada di server -> upload
-    const localUpdatedAt = localRoutine.updatedAt;
+    const localUpdatedAt = localPrograms.updatedAt;
     const localIsNewer =
       !!localUpdatedAt &&
       (!serverUpdatedAt || localUpdatedAt > serverUpdatedAt);
@@ -266,13 +263,19 @@ export async function syncAll(userId: string): Promise<void> {
     if (localHasContent && (!serverHasContent || localIsNewer)) {
       const { error: routineErr } = await supabase.from("routine").upsert({
         id: userId,
-        days: localRoutine.days,
-        updated_at: localUpdatedAt ?? new Date().toISOString(),
+        programs: localPrograms.programs,
+        schedule: localPrograms.schedule,
+        program_updated_at: localUpdatedAt ?? new Date().toISOString(),
       });
       if (routineErr) throw routineErr;
     } else if (serverHasContent) {
       // Server lebih baru -> tarik ke lokal (ikut sertakan timestamp server)
-      saveRoutine({ version: 1, days: serverDays, updatedAt: serverUpdatedAt });
+      saveTrainingProgramStore({
+        version: 1,
+        programs: serverPrograms,
+        schedule: serverSchedule,
+        updatedAt: serverUpdatedAt,
+      });
     }
 
     // 6. Riwayat komposisi tubuh — cache lokal dipisahkan per user.

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import TodayWorkout from "./TodayWorkout";
 import RoutineEditor from "./RoutineEditor";
 
-type View = "latihan" | "rutin";
+type View = "latihan" | "program";
 
 export default function TodayPage({ initialView = "latihan" }: { initialView?: View }) {
   const [view, setView] = useState<View>(initialView);
@@ -32,15 +32,15 @@ export default function TodayPage({ initialView = "latihan" }: { initialView?: V
         </button>
         <button
           type="button"
-          onClick={() => setView("rutin")}
-          className={segClass(view === "rutin")}
+          onClick={() => setView("program")}
+          className={segClass(view === "program")}
         >
-          Rutin
+          Program
         </button>
       </div>
 
       {view === "latihan" ? (
-        <TodayWorkout onOpenRoutine={() => setView("rutin")} />
+        <TodayWorkout onOpenPrograms={() => setView("program")} />
       ) : (
         <RoutineEditor />
       )}
