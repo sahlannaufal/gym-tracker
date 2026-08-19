@@ -36,7 +36,7 @@ Aplikasi web sederhana (MVP) untuk mencatat dan memantau progres latihan beban (
 - Halaman histori / log latihan.
 - Grafik progress beban sederhana.
 - Program latihan reusable + pemilihan program/rest day per tanggal + quick-log.
-- Rest timer setelah menyimpan workout (fullscreen, durasi bisa diubah).
+- Floating rest timer yang konsisten pada quick-log dan form tambah workout.
 - Riwayat pengukuran dan summary komposisi tubuh untuk pengguna yang login.
 - Google Analytics 4 untuk page-view production.
 - Penyimpanan data LocalStorage.
@@ -71,7 +71,7 @@ Aplikasi web sederhana (MVP) untuk mencatat dan memantau progres latihan beban (
   - **Set** — number, *required*, > 0.
   - **Tanggal** — date picker, *required*, default hari ini.
 - Validasi: latihan wajib dipilih (atau nama custom tidak boleh kosong); beban/repetisi/set harus angka > 0. Tampilkan pesan error inline.
-- Tombol **"Simpan"** menyimpan entri ke LocalStorage, lalu muncul **rest timer** (lihat F8); aksi "Selesai" kembali ke Dashboard.
+- Tombol **"Simpan"** menyimpan entri ke LocalStorage, menampilkan toast kecil **"✓ Data tersimpan"** di bagian atas layar selama sekitar 2,5 detik, lalu memulai **floating rest timer** (lihat F8) tanpa meninggalkan form.
 - Tombol **"Batal"** kembali tanpa menyimpan.
 
 ### F3. Halaman Histori / Log Latihan
@@ -125,17 +125,15 @@ Aplikasi web sederhana (MVP) untuk mencatat dan memantau progres latihan beban (
 - **Konfigurasi dashboard Supabase wajib:** Authentication → URL Configuration → **Site URL** = domain produksi, dan **Redirect URLs** berisi `https://<domain>/**` (produksi) + `http://localhost:3000/**` (dev). Tanpa ini `emailRedirectTo` diabaikan dan link email memakai Site URL yang terkonfigurasi (jika `http://localhost:3000`, link akan salah arah).
 - Env: `NEXT_PUBLIC_SUPABASE_URL` & `NEXT_PUBLIC_SUPABASE_ANON_KEY` (dibutuhkan saat build Docker).
 
-### F8. Rest Timer Setelah Menyimpan Workout
+### F8. Floating Rest Timer
 
-- Setelah menekan **"Simpan"** pada form pencatatan, workout tersimpan lalu muncul **timer fullscreen** untuk menghitung waktu istirahat antar set.
-- Hitung mundur tampil besar (format `MM:SS`) + progress bar; auto-start saat muncul.
-- **Durasi dapat diubah** dengan stepper `-30s`/`+30s` dan preset `30 / 60 / 90 / 120` detik; **default 60 detik**. Pilihan tersimpan di LocalStorage (`gym_tracker_rest_seconds_v1`) dan dipakai sebagai default berikutnya.
-- Kontrol: **Jeda/Lanjut**, **Lewati** (langsung ke layar selesai tanpa sinyal), dan toggle **Suara Nyala/Mati** (`gym_tracker_rest_muted_v1`).
-- Saat selesai: notifikasi **beep via Web Audio API** + **vibrasi** (kecuali muted), lalu dua aksi:
-  - **"Catat Set Berikutnya"** — kembali ke form dengan nama latihan & tanggal dipertahankan, beban/repetisi/set dikosongkan (fokus ke field beban).
-  - **"Selesai"** — kembali ke Dashboard.
+- Setelah menekan **"Simpan"** pada form tambah workout, workout tersimpan lalu floating timer otomatis muncul di atas bottom navigation tanpa meninggalkan form.
+- Hitung mundur memakai format `MM:SS` dan progress bar; auto-start saat muncul.
+- **Durasi dapat diubah** dengan stepper `-30s`/`+30s`; **default 60 detik**. Pilihan tersimpan di LocalStorage (`gym_tracker_rest_seconds_v1`) dan dipakai sebagai default berikutnya.
+- Kontrol: **Jeda/Lanjut**, ulangi setelah selesai, **Lewati** untuk menutup panel, dan toggle **Suara Nyala/Mati** (`gym_tracker_rest_muted_v1`).
+- Saat selesai, timer memberikan notifikasi **beep via Web Audio API** + **vibrasi** kecuali muted. Form tetap terbuka agar pengguna dapat mencatat set berikutnya atau kembali melalui navigasi aplikasi.
 - Timer berjalan penuh di client (tidak ada request jaringan), aman untuk mode offline/PWA.
-- Pada form inline **Latihan Hari Ini**, timer dimulai manual melalui tombol **"Mulai Istirahat"** di dalam kartu latihan. Timer tampil sebagai panel floating di atas bottom navigation agar tetap terlihat saat collapse ditutup atau latihan lain dibuka. Panel menyediakan progress, jeda/lanjut, `-30s`/`+30s`, lewati, toggle suara, dan sinyal suara/vibrasi saat selesai; memulai timer dari latihan lain akan mereset timer aktif menggunakan durasi preferensi terakhir.
+- Pada form inline **Latihan Hari Ini**, timer yang sama dimulai manual melalui tombol **"Mulai Istirahat"** di dalam kartu latihan. Timer tetap terlihat saat collapse ditutup atau latihan lain dibuka; memulai timer dari latihan lain akan mereset timer aktif menggunakan durasi preferensi terakhir.
 
 ### F9. Riwayat & Summary Komposisi Tubuh
 

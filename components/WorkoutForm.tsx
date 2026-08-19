@@ -8,7 +8,7 @@ import {
   CUSTOM_EXERCISE_VALUE,
   EXERCISE_CATEGORIES,
 } from "@/lib/constants/exercises";
-import RestTimer from "./RestTimer";
+import FloatingRestTimer from "./FloatingRestTimer";
 
 interface FormValues {
   exerciseSelect: string;
@@ -116,8 +116,19 @@ export default function WorkoutForm({
     };
   });
   const [errors, setErrors] = useState<FormErrors>({});
-  const [showRestTimer, setShowRestTimer] = useState(false);
-  const weightInputRef = useRef<HTMLInputElement>(null);
+  const [timerOpen, setTimerOpen] = useState(false);
+  const [timerExercise, setTimerExercise] = useState<string>();
+  const [timerRestartKey, setTimerRestartKey] = useState(0);
+  const [saveNotice, setSaveNotice] = useState(false);
+  const noticeTimeoutRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (noticeTimeoutRef.current !== null) {
+        window.clearTimeout(noticeTimeoutRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (!isLoaded || !initialExercise) return;
@@ -171,31 +182,28 @@ export default function WorkoutForm({
       setErrors(nextErrors);
       return;
     }
+    const exercise =
+      values.exerciseSelect === CUSTOM_EXERCISE_VALUE
+        ? values.customExercise.trim()
+        : values.exerciseSelect;
     addWorkout({
-      exercise:
-        values.exerciseSelect === CUSTOM_EXERCISE_VALUE
-          ? values.customExercise.trim()
-          : values.exerciseSelect,
+      exercise,
       weight: Number(values.weight),
       reps: Number(values.reps),
       sets: Number(values.sets),
       date: values.date,
     });
-    setShowRestTimer(true);
-  };
-
-  // Kembali ke form untuk mencatat set berikutnya: nama latihan & tanggal
-  // dipertahankan, beban/repetisi/set dikosongkan.
-  const handleLogAgain = () => {
-    setShowRestTimer(false);
-    setValues((prev) => ({
-      ...prev,
-      weight: "",
-      reps: "",
-      sets: "",
-    }));
-    setErrors({});
-    requestAnimationFrame(() => weightInputRef.current?.focus());
+    setTimerExercise(exercise);
+    setTimerRestartKey((current) => current + 1);
+    setTimerOpen(true);
+    setSaveNotice(true);
+    if (noticeTimeoutRef.current !== null) {
+      window.clearTimeout(noticeTimeoutRef.current);
+    }
+    noticeTimeoutRef.current = window.setTimeout(() => {
+      setSaveNotice(false);
+      noticeTimeoutRef.current = null;
+    }, 2500);
   };
 
   return (
@@ -245,7 +253,6 @@ export default function WorkoutForm({
         <Field label="Beban (kg)" htmlFor="weight" error={errors.weight}>
           <input
             id="weight"
-            ref={weightInputRef}
             type="number"
             inputMode="decimal"
             min="0"
@@ -313,10 +320,21 @@ export default function WorkoutForm({
         </button>
       </div>
 
-      <RestTimer
-        open={showRestTimer}
-        onClose={() => router.push("/")}
-        onLogAgain={handleLogAgain}
+      {saveNotice && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="fixed left-1/2 top-[calc(1rem+env(safe-area-inset-top))] z-[60] -translate-x-1/2 rounded-full border border-lime-400/40 bg-gray-900/95 px-4 py-2 text-sm font-semibold text-lime-400 shadow-lg shadow-black/40 backdrop-blur"
+        >
+          ✓ Data tersimpan
+        </div>
+      )}
+
+      <FloatingRestTimer
+        open={timerOpen}
+        restartKey={timerRestartKey}
+        exercise={timerExercise}
+        onClose={() => setTimerOpen(false)}
       />
     </form>
   );

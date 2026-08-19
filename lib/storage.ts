@@ -305,7 +305,7 @@ export function saveTrainingProgramStore(store: TrainingProgramStore): void {
   window.dispatchEvent(new Event("training-programs-changed"));
 }
 
-// --- Preferensi rest timer (fullscreen countdown setelah menyimpan workout) ---
+// --- Preferensi floating rest timer ---
 
 const REST_SECONDS_KEY = "gym_tracker_rest_seconds_v1";
 const REST_MUTED_KEY = "gym_tracker_rest_muted_v1";
