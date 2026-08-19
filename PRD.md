@@ -38,6 +38,7 @@ Aplikasi web sederhana (MVP) untuk mencatat dan memantau progres latihan beban (
 - Program latihan reusable + pemilihan program/rest day per tanggal + quick-log.
 - Rest timer setelah menyimpan workout (fullscreen, durasi bisa diubah).
 - Riwayat pengukuran dan summary komposisi tubuh untuk pengguna yang login.
+- Google Analytics 4 untuk page-view production.
 - Penyimpanan data LocalStorage.
 
 ### 5.2 Out-of-Scope (MVP)
@@ -143,6 +144,13 @@ Aplikasi web sederhana (MVP) untuk mencatat dan memantau progres latihan beban (
 - Setiap pengukuran disimpan sebagai histori; tinggi pengukuran terakhir menjadi prefill berikutnya. Pengguna dapat menghapus entri.
 - Summary terbaru menampilkan BMI, perubahan berat, estimasi massa lemak, persentase massa otot, dan insight sederhana berdasarkan perubahan dari pengukuran sebelumnya. Insight bukan diagnosis medis dan angka smart scale dianjurkan untuk dibaca sebagai tren.
 - Offline-first dengan cache LocalStorage per `user_id`, pending-delete, dan sinkronisasi dua arah last-write-wins melalui tabel Supabase `body_measurements` dengan RLS. Migration upgrade: `supabase/migrations/0002_body_measurements.sql`.
+
+### F10. Google Analytics
+
+- Google tag memakai measurement ID `G-JJ4FVTJ9TY` dan dimuat non-blocking melalui `next/script` setelah halaman interaktif.
+- Analytics hanya aktif pada build production sehingga aktivitas development/localhost tidak masuk ke laporan.
+- Page view dicatat pada load awal dan setiap navigasi client-side App Router, termasuk query string.
+- Implementasi tidak mengirim data workout, pengukuran tubuh, email, atau isi LocalStorage sebagai event analytics.
 
 ## 7. Data Model
 

@@ -4,6 +4,7 @@ import BottomNav from "@/components/BottomNav";
 import InstallPrompt from "@/components/InstallPrompt";
 import SyncEngine from "@/components/SyncEngine";
 import { SerwistProvider } from "@/components/SerwistProvider";
+import GoogleAnalytics from "@/components/GoogleAnalytics";
 
 export const metadata: Metadata = {
   applicationName: "Gym Progress Tracker",
@@ -40,6 +41,7 @@ export default function RootLayout({
   return (
     <html lang="id">
       <body className="min-h-screen bg-gray-950 text-gray-100 antialiased">
+        {process.env.NODE_ENV === "production" && <GoogleAnalytics />}
         {process.env.NODE_ENV === "production" ? (
           <SerwistProvider swUrl="/serwist/sw.js">{content}</SerwistProvider>
         ) : (

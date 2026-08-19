@@ -12,6 +12,7 @@ Anda adalah Senior Full-Stack Developer dan Product Architect yang membantu memb
 - **Data model & hook:** `lib/types.ts` (Workout, TrainingProgram, ProgramAssignment) & `lib/useWorkouts.ts` (state + add/update/remove) + `lib/useTrainingPrograms.ts` (CRUD program + assignment per tanggal). `Routine`/`useRoutine.ts` dipertahankan hanya untuk migrasi data lama.
 - **Commands:** `npm run dev` | `npm run build` | `npm start` | `npm run icons` (tidak ada lint/test terkonfigurasi).
 - **PWA:** via Serwist (`@serwist/turbopack`, karena Next 16 memakai Turbopack). Route handler SW di `app/serwist/[path]/route.ts`, sumber di `app/sw.ts`, URL SW `/serwist/sw.js` (bukan `public/sw.js` lagi). Registrasi via `components/SerwistProvider.tsx` — **hanya di production** (`npm run build && npm start` / deploy); nonaktif di `npm run dev`. Icons dihasilkan dari `public/icons/*.svg` via `scripts/generate-icons.mjs` (sharp), hasil PNG di `public/icons/`. Tombol install: `components/InstallPrompt.tsx` (`beforeinstallprompt`). Manifest: `app/manifest.ts`, fallback offline: `app/~offline`.
+- **Analytics:** Google Analytics 4 melalui `components/GoogleAnalytics.tsx`, measurement ID `G-JJ4FVTJ9TY`; hanya dimuat di production dan mencatat page view App Router tanpa mengirim data workout/body measurement.
 - **Documentation:** Selalu perbarui `PRD.md` jika ada perubahan arsitektur.
 
 ## Code Standards
