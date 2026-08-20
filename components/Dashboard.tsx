@@ -4,24 +4,48 @@ import Link from "next/link";
 import { useWorkouts } from "@/lib/useWorkouts";
 import { useTrainingPrograms } from "@/lib/useTrainingPrograms";
 import type { TrainingProgramStore, Workout } from "@/lib/types";
-import { currentWeekRange, formatDate, todayLocalISO } from "@/lib/format";
+import { currentWeekRange, formatDateShort, todayLocalISO } from "@/lib/format";
+import { getExerciseMuscles } from "@/lib/constants/exerciseMuscles";
 
-function StatCard({
-  label,
-  value,
-  sub,
-}: {
-  label: string;
-  value: string | number;
-  sub?: string;
-}) {
+function StatCard({ label, value }: { label: string; value: number }) {
   return (
     <div className="rounded-2xl border border-gray-800 bg-gray-900/50 p-4">
       <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
         {label}
       </p>
-      <p className="mt-1 truncate text-lg font-bold text-gray-100">{value}</p>
-      {sub && <p className="mt-0.5 text-sm text-gray-400">{sub}</p>}
+      <p className="mt-2 text-3xl font-bold tracking-tight text-gray-100">{value}</p>
+    </div>
+  );
+}
+
+function DetailCard({
+  label,
+  date,
+  title,
+  detail,
+  badge,
+}: {
+  label: string;
+  date?: string;
+  title: string;
+  detail: string;
+  badge?: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-gray-800 bg-gray-900/50 p-5">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <p className="text-xs font-medium uppercase tracking-wide text-gray-500">{label}</p>
+          {badge && (
+            <span className="rounded-md bg-lime-400/15 px-1.5 py-0.5 text-[10px] font-bold text-lime-400">
+              {badge}
+            </span>
+          )}
+        </div>
+        {date && <p className="shrink-0 text-xs text-gray-500">{date}</p>}
+      </div>
+      <p className="mt-2 text-lg font-bold leading-snug text-gray-100 [overflow-wrap:anywhere]">{title}</p>
+      <p className="mt-1 text-sm leading-5 text-gray-400">{detail}</p>
     </div>
   );
 }
@@ -84,32 +108,45 @@ export default function Dashboard() {
   }
 
   const { monday, sunday } = currentWeekRange();
-  const weekWorkouts = workouts.filter((w) => w.date >= monday && w.date <= sunday);
+  const today = todayLocalISO();
+  const actualWorkouts = workouts.filter((workout) => workout.date <= today);
+  const weekWorkouts = actualWorkouts.filter((w) => w.date >= monday && w.date <= sunday);
+  const weekSessions = new Set(weekWorkouts.map((workout) => workout.date)).size;
   const weekTotalSets = weekWorkouts.reduce((acc, w) => acc + w.sets, 0);
 
-  const volumeByExercise = workouts.reduce<Record<string, number>>(
-    (acc, w) => {
-      const volume = w.weight * w.sets * w.reps;
-      acc[w.exercise] = (acc[w.exercise] ?? 0) + volume;
-      return acc;
-    },
-    {}
-  );
-  const [topExercise] = Object.entries(volumeByExercise).sort(
-    (a, b) => b[1] - a[1]
-  )[0];
-
-  const topMax = workouts.reduce<Workout | null>((best, w) => {
-    if (w.exercise !== topExercise) return best;
+  const personalBest = actualWorkouts.reduce<Workout | null>((best, w) => {
     if (!best || w.weight > best.weight) return w;
     if (w.weight === best.weight && w.reps > best.reps) return w;
+    if (w.weight === best.weight && w.reps === best.reps && w.date > best.date) return w;
     return best;
   }, null);
 
-  const lastWorkout = [...workouts].sort(
-    (a, b) =>
-      b.date.localeCompare(a.date) || b.createdAt.localeCompare(a.createdAt)
-  )[0];
+  const lastTrainingDate = actualWorkouts.reduce(
+    (latest, workout) => (workout.date > latest ? workout.date : latest),
+    "",
+  );
+  const lastDayWorkouts = actualWorkouts.filter(
+    (workout) => workout.date === lastTrainingDate,
+  );
+  const primaryMuscles = new Set<string>();
+  const secondaryMuscles = new Set<string>();
+  for (const workout of lastDayWorkouts) {
+    const metadata = getExerciseMuscles(workout.exercise);
+    metadata.primaryMuscles.forEach((muscle) => primaryMuscles.add(muscle));
+    metadata.secondaryMuscles.forEach((muscle) => {
+      if (!primaryMuscles.has(muscle)) secondaryMuscles.add(muscle);
+    });
+  }
+  const allMuscles = [...primaryMuscles, ...secondaryMuscles].filter(
+    (muscle, index, list) => list.indexOf(muscle) === index,
+  );
+  const visibleMuscles = allMuscles.slice(0, 3);
+  const remainingMuscles = allMuscles.length - visibleMuscles.length;
+  const muscleSummary = `${visibleMuscles.join(" · ")}${
+    remainingMuscles > 0 ? ` · +${remainingMuscles} lainnya` : ""
+  }`;
+  const uniqueExercises = new Set(lastDayWorkouts.map((workout) => workout.exercise)).size;
+  const lastDaySets = lastDayWorkouts.reduce((sum, workout) => sum + workout.sets, 0);
 
   return (
     <section className="space-y-6">
@@ -129,23 +166,28 @@ export default function Dashboard() {
       <TodayProgramCard store={store} />
 
       <div className="grid grid-cols-2 gap-4">
-        <StatCard
-          label="Total Workout"
-          value={weekWorkouts.length}
-          sub="Minggu ini"
-        />
-        <StatCard label="Total Set" value={weekTotalSets} sub="Minggu ini" />
-        <StatCard
-          label="Latihan Terbanyak"
-          value={topExercise}
-          sub={topMax ? `${topMax.weight} kg × ${topMax.reps} rep` : undefined}
-        />
-        <StatCard
-          label="Workout Terakhir"
-          value={lastWorkout.exercise}
-          sub={`${lastWorkout.weight} kg - ${formatDate(lastWorkout.date)}`}
-        />
+        <StatCard label="Sesi Minggu Ini" value={weekSessions} />
+        <StatCard label="Set Minggu Ini" value={weekTotalSets} />
       </div>
+
+      {personalBest && (
+        <DetailCard
+          label="Personal Best"
+          badge="PB"
+          date={formatDateShort(personalBest.date)}
+          title={personalBest.exercise}
+          detail={`${personalBest.weight} kg · ${personalBest.reps} repetisi · ${personalBest.sets} set`}
+        />
+      )}
+
+      {lastTrainingDate && (
+        <DetailCard
+          label="Terakhir Dilatih"
+          date={formatDateShort(lastTrainingDate)}
+          title={muscleSummary || "Lainnya"}
+          detail={`${uniqueExercises} latihan · ${lastDaySets} set`}
+        />
+      )}
     </section>
   );
 }

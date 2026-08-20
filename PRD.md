@@ -56,12 +56,13 @@ Aplikasi web sederhana (MVP) untuk mencatat dan memantau progres latihan beban (
 ### F1. Dashboard Ringkasan Latihan
 
 - Menampilkan ringkasan cepat:
-  - Total workout tercatat.
-  - Total set latihan.
-  - Latihan dengan volume terbanyak (beban × set × repetisi).
-  - Workout terakhir (nama latihan, beban, tanggal).
+  - Jumlah sesi minggu ini berdasarkan tanggal latihan unik (tanggal mendatang tidak dihitung).
+  - Total set minggu ini.
+  - Personal Best sepanjang waktu: beban tertinggi, dengan repetisi tertinggi dan tanggal terbaru sebagai tie-breaker.
+  - Otot terakhir dilatih dari seluruh workout pada tanggal aktual terbaru: primary muscles diprioritaskan, diikuti secondary muscles, maksimal tiga nama + jumlah sisanya; dilengkapi jumlah latihan unik dan total set.
 - Menampilkan tombol aksi utama **"Tambah Latihan"**.
 - Dashboard otomatis ter-refresh saat data berubah.
+- Metadata `primaryMuscles`/`secondaryMuscles` untuk latihan bawaan disimpan statis di `lib/constants/exerciseMuscles.ts`, terpisah dari model workout agar offline-ready dan tidak memerlukan migrasi storage/database. Latihan custom menggunakan fallback `Lainnya`.
 
 ### F2. Form Pencatatan Workout
 
