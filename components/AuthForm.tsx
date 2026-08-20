@@ -4,6 +4,21 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { isSyncConfigured, supabase } from "@/lib/supabase/client";
 import { requestSync } from "@/lib/sync";
+import { identifyAndSetUser, trackEvent } from "@/lib/analytics";
+
+function normalizeLoginFailure(error: unknown): string {
+  const message = error instanceof Error ? error.message.toLowerCase() : "";
+  if (message.includes("invalid login") || message.includes("invalid credentials")) {
+    return "invalid_credentials";
+  }
+  if (message.includes("network") || message.includes("fetch")) {
+    return "network_error";
+  }
+  if (message.includes("password") || message.includes("email")) {
+    return "validation_error";
+  }
+  return "server_error";
+}
 
 const inputClass =
   "w-full rounded-xl border border-gray-700 bg-gray-900 px-4 py-2.5 text-gray-100 " +
@@ -50,6 +65,8 @@ export default function AuthForm() {
         // Konfirmasi email nonaktif -> signUp sudah mengembalikan session,
         // langsung login tanpa perlu membuka link verifikasi.
         if (data.session) {
+          identifyAndSetUser(data.session.user);
+          trackEvent("Login Completed", { login_method: "email_password" });
           requestSync();
           router.push("/account");
           return;
@@ -60,15 +77,23 @@ export default function AuthForm() {
         );
         setMode("login");
       } else {
-        const { error } = await supabase.auth.signInWithPassword({
+        const { data, error } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
         if (error) throw error;
+        identifyAndSetUser(data.user);
+        trackEvent("Login Completed", { login_method: "email_password" });
         requestSync();
         router.push("/account");
       }
     } catch (err) {
+      if (mode === "login") {
+        trackEvent("Login Failed", {
+          login_method: "email_password",
+          failed_reason: normalizeLoginFailure(err),
+        });
+      }
       setError(
         err instanceof Error ? err.message : "Gagal masuk, coba lagi."
       );

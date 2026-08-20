@@ -1,14 +1,27 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useWorkouts } from "@/lib/useWorkouts";
 import { formatDate } from "@/lib/format";
+import { trackEvent } from "@/lib/analytics";
 
 export default function History() {
   const { workouts, isLoaded, removeWorkout } = useWorkouts();
   const [filter, setFilter] = useState<string>("all");
   const [date, setDate] = useState("");
+  const lastTrackedFilter = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!isLoaded) return;
+    const key = `${filter}:${date}`;
+    if (lastTrackedFilter.current === key) return;
+    lastTrackedFilter.current = key;
+    trackEvent("Workout History Viewed", {
+      exercise_filter: filter,
+      date_range_filter: date || "all_dates",
+    });
+  }, [date, filter, isLoaded]);
 
   if (!isLoaded) {
     return <p className="text-gray-500">Memuat...</p>;

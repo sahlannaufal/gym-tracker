@@ -8,6 +8,7 @@ import { isSyncConfigured, supabase } from "@/lib/supabase/client";
 import { requestSync } from "@/lib/sync";
 import SyncStatus from "./SyncStatus";
 import BodyCompositionPanel from "./BodyCompositionPanel";
+import { resetMixpanel, trackEvent } from "@/lib/analytics";
 
 export default function AccountPanel() {
   const router = useRouter();
@@ -57,8 +58,12 @@ export default function AccountPanel() {
 
   const handleSignOut = async () => {
     if (!supabase) return;
-    await supabase.auth.signOut();
-    router.refresh();
+    const { error } = await supabase.auth.signOut();
+    if (!error) {
+      trackEvent("Logout Completed");
+      resetMixpanel();
+      router.refresh();
+    }
   };
 
   return (

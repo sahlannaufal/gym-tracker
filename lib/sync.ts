@@ -16,6 +16,7 @@ import {
   removeBodyMeasurementDelete,
   replaceBodyMeasurements,
 } from "./bodyMeasurements";
+import { trackEvent } from "./analytics";
 
 // ---------- Status sinkronisasi (pub-sub ringan untuk UI) ----------
 
@@ -169,6 +170,8 @@ export async function syncAll(userId: string): Promise<void> {
     return;
   }
   inFlight = true;
+  const syncStartedAt = Date.now();
+  let syncedWorkoutCount = 0;
   setStatus({ state: "syncing" });
   try {
     // 1. Proses hapus yang tertunda saat offline
@@ -178,7 +181,10 @@ export async function syncAll(userId: string): Promise<void> {
         .delete()
         .eq("id", id)
         .eq("user_id", userId);
-      if (!error) removePendingDelete(id);
+      if (!error) {
+        removePendingDelete(id);
+        syncedWorkoutCount += 1;
+      }
     }
     const pending = new Set(loadPendingDeletes());
 
@@ -221,6 +227,7 @@ export async function syncAll(userId: string): Promise<void> {
         .from("workouts")
         .upsert(toRow(w, userId));
       if (upErr) throw upErr;
+      syncedWorkoutCount += 1;
     }
 
     // Jangan timpa LocalStorage dengan snapshot basi: baca ulang state &
@@ -336,6 +343,12 @@ export async function syncAll(userId: string): Promise<void> {
     notifyBodyMeasurementsChanged(userId);
 
     setStatus({ state: "synced", lastSync: new Date().toISOString() });
+    if (syncedWorkoutCount > 0) {
+      trackEvent("Workout Sync Completed", {
+        synced_workout_count: syncedWorkoutCount,
+        sync_duration_ms: Date.now() - syncStartedAt,
+      });
+    }
   } catch {
     setStatus({ state: "error" });
   } finally {

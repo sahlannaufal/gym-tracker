@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useWorkouts } from "@/lib/useWorkouts";
 import { formatDateShort } from "@/lib/format";
+import { trackEvent } from "@/lib/analytics";
 
 const W = 320;
 const H = 200;
@@ -29,6 +30,23 @@ function Summary({
 export default function Progress() {
   const { workouts, isLoaded } = useWorkouts();
   const [selected, setSelected] = useState<string | null>(null);
+  const lastTrackedExercise = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!isLoaded || !selected || lastTrackedExercise.current === selected) return;
+    const dates = [...new Set(
+      workouts
+        .filter((workout) => workout.exercise === selected)
+        .map((workout) => workout.date),
+    )].sort();
+    lastTrackedExercise.current = selected;
+    trackEvent("Progress Chart Viewed", {
+      exercise_name: selected,
+      date_range:
+        dates.length > 0 ? `${dates[0]}:${dates[dates.length - 1]}` : "no_data",
+      total_data_points: dates.length,
+    });
+  }, [isLoaded, selected, workouts]);
 
   if (!isLoaded) {
     return <p className="text-gray-500">Memuat...</p>;

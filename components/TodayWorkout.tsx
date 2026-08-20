@@ -7,6 +7,7 @@ import { DAY_LABELS } from "@/lib/types";
 import { formatDate, todayLocalISO, weekdayFromISO } from "@/lib/format";
 import type { Workout, WorkoutInput } from "@/lib/types";
 import FloatingRestTimer from "./FloatingRestTimer";
+import type { WorkoutTrackingContext } from "@/lib/useWorkouts";
 
 const inputClass =
   "w-full rounded-xl border border-gray-700 bg-gray-900 px-4 py-2.5 text-gray-100 " +
@@ -33,7 +34,7 @@ function ExerciseCard({
   entries: Workout[];
   lastWorkout?: Workout;
   date: string;
-  onAdd: (input: WorkoutInput) => Workout;
+  onAdd: (input: WorkoutInput, context?: WorkoutTrackingContext) => Workout;
   onUpdate: (
     id: string,
     changes: Pick<Workout, "weight" | "reps">,
@@ -103,13 +104,19 @@ function ExerciseCard({
       });
     }
 
-    const saved = onAdd({
-      exercise: name,
-      weight: values.weight,
-      reps: values.reps,
-      sets: 1,
-      date,
-    });
+    const saved = onAdd(
+      {
+        exercise: name,
+        weight: values.weight,
+        reps: values.reps,
+        sets: 1,
+        date,
+      },
+      {
+        inputMethod: "quick_log",
+        prefilledFromLastSession: Boolean(lastWorkout),
+      },
+    );
     setRows((current) =>
       current.map((item) =>
         item.key === row.key
@@ -134,13 +141,19 @@ function ExerciseCard({
     const savedPrevious = persistRow(previous);
     if (!savedPrevious) return;
 
-    const added = onAdd({
-      exercise: name,
-      weight: savedPrevious.weight,
-      reps: savedPrevious.reps,
-      sets: 1,
-      date,
-    });
+    const added = onAdd(
+      {
+        exercise: name,
+        weight: savedPrevious.weight,
+        reps: savedPrevious.reps,
+        sets: 1,
+        date,
+      },
+      {
+        inputMethod: "quick_log",
+        prefilledFromLastSession: Boolean(lastWorkout),
+      },
+    );
     setRows((current) => [
       ...current.map((row) =>
         row.key === previous.key

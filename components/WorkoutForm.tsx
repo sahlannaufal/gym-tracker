@@ -186,13 +186,16 @@ export default function WorkoutForm({
       values.exerciseSelect === CUSTOM_EXERCISE_VALUE
         ? values.customExercise.trim()
         : values.exerciseSelect;
-    addWorkout({
-      exercise,
-      weight: Number(values.weight),
-      reps: Number(values.reps),
-      sets: Number(values.sets),
-      date: values.date,
-    });
+    addWorkout(
+      {
+        exercise,
+        weight: Number(values.weight),
+        reps: Number(values.reps),
+        sets: Number(values.sets),
+        date: values.date,
+      },
+      { inputMethod: "manual_form" },
+    );
     setTimerExercise(exercise);
     setTimerRestartKey((current) => current + 1);
     setTimerOpen(true);

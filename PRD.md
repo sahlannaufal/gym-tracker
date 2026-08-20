@@ -39,6 +39,7 @@ Aplikasi web sederhana (MVP) untuk mencatat dan memantau progres latihan beban (
 - Floating rest timer yang konsisten pada quick-log dan form tambah workout.
 - Riwayat pengukuran dan summary komposisi tubuh untuk pengguna yang login.
 - Google Analytics 4 untuk page-view production.
+- Mixpanel Analytics production-only untuk funnel autentikasi, penggunaan workout, progres, dan sinkronisasi.
 - Penyimpanan data LocalStorage.
 
 ### 5.2 Out-of-Scope (MVP)
@@ -149,6 +150,23 @@ Aplikasi web sederhana (MVP) untuk mencatat dan memantau progres latihan beban (
 - Analytics hanya aktif pada build production sehingga aktivitas development/localhost tidak masuk ke laporan.
 - Page view dicatat pada load awal dan setiap navigasi client-side App Router, termasuk query string.
 - Implementasi tidak mengirim data workout, pengukuran tubuh, email, atau isi LocalStorage sebagai event analytics.
+
+### F11. Mixpanel Analytics
+
+- SDK browser dibungkus oleh `lib/analytics.ts`; komponen dan service aplikasi tidak memanggil SDK secara langsung.
+- Tracking hanya aktif jika build memakai `NODE_ENV=production`, `NEXT_PUBLIC_APP_ENV=production`, dan `NEXT_PUBLIC_MIXPANEL_TOKEN` tersedia. Development menampilkan preview via `console.debug`; staging/preview menjadi no-op.
+- Inisialisasi menggunakan persistence `localStorage`, `track_pageview: false`, dan `debug: false`. Route App Router dicatat oleh `components/MixpanelAnalytics.tsx` tanpa auto page-view SDK.
+- Event: `App Opened`, `Page Viewed`, `Login Completed`, `Login Failed`, `Logout Completed`, `Workout Logged`, `Workout Updated`, `Workout Deleted`, `Workout History Viewed`, `Progress Chart Viewed`, `Quick Log Used`, dan `Workout Sync Completed`.
+- Session Supabase yang dipulihkan maupun login baru dihubungkan ke stable user ID. Profile menyimpan `$email` dari user terautentikasi serta `$name`/`role` hanya jika tersedia; email tidak dikirim pada event aktivitas.
+- Logout mencatat `Logout Completed` sebelum identitas Mixpanel di-reset. Error analytics selalu diabaikan agar alur utama tetap berjalan.
+- SDK mengandalkan persistence dan retry bawaan browser. Aplikasi tidak menambahkan queue analytics terpisah; event yang terjadi sepenuhnya offline dapat bergantung pada perilaku antrean SDK/browser dan berisiko tidak terkirim bila storage dibersihkan sebelum koneksi pulih.
+
+#### Konfigurasi dan verifikasi Mixpanel
+
+- Pada deployment production saja, set `NEXT_PUBLIC_MIXPANEL_TOKEN` ke Project Token dan `NEXT_PUBLIC_APP_ENV=production`. Jangan memasukkan API Secret ke frontend atau variabel `NEXT_PUBLIC_*`.
+- Development dan staging harus membiarkan `NEXT_PUBLIC_APP_ENV` selain `production` (atau tidak diset), sehingga seluruh operasi SDK menjadi no-op.
+- Di Mixpanel, verifikasi event melalui **Data → Events** dan user melalui **Users / User Profiles**. Buat Insights report dari event yang dibutuhkan, lalu gunakan breakdown user-profile property `$email` untuk melihat aktivitas per akun.
+- `$email` adalah data pribadi dan akses report harus dibatasi hanya untuk pihak yang berwenang.
 
 ## 7. Data Model
 
