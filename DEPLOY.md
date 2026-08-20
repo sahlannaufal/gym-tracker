@@ -42,16 +42,26 @@ Edit `Caddyfile`, ganti `gym.example.com` dengan domain aslimu.
 # tanpa Supabase (mode lokal penuh):
 docker compose up -d --build
 
-# dengan Supabase (login + sync): pastikan file .env sudah dibuat dulu
+# dengan Supabase/Mixpanel: pastikan file .env sudah dibuat dulu
 docker compose up -d --build
 ```
-> `NEXT_PUBLIC_SUPABASE_*` di-inline saat **build** (build args dari `.env`). Jika sudah pernah build tanpa env, jalankan ulang dengan `--build`.
+Contoh `.env` production:
+
+```env
+SUPABASE_URL=https://xxxx.supabase.co
+SUPABASE_ANON_KEY=your_supabase_anon_key
+NEXT_PUBLIC_MIXPANEL_TOKEN=your_mixpanel_project_token
+NEXT_PUBLIC_APP_ENV=production
+```
+
+> Variabel publik Supabase dan Mixpanel di-inline saat **build** melalui build args. Jika image pernah dibuat tanpa env tersebut, jalankan ulang dengan `--build`. Jangan memasukkan Mixpanel API Secret ke frontend.
 
 ## 5. Verifikasi
 - `https://gym.example.com` → dashboard terbuka dengan HTTPS (Caddy auto-issue SSL Let's Encrypt).
 - Pastikan service worker aktif (DevTools → Application → Service Workers) → `sw.js` dari `/serwist/sw.js`.
 - Uji install PWA dari HP: buka site → menu browser → "Add to Home Screen".
 - Uji login: tab Profil → Masuk/Daftar → data lokal ter-upload otomatis.
+- Verifikasi Mixpanel: DevTools → Network menampilkan request Mixpanel setelah aplikasi dibuka, lalu cek **Mixpanel → Data → Events**. Jika PWA masih memakai bundle lama, unregister service worker/hapus site data atau uji melalui incognito.
 
 ## Log & update
 ```bash
@@ -64,3 +74,4 @@ docker compose pull && docker compose up -d --build   # update setelah push baru
 - **SSL belum aktif / domain tidak resolve**: pastikan A record sudah masuk DNS (tunggu beberapa menit) dan port 80/443 terbuka di firewall VPS.
 - **PWA tidak bisa install di HP**: PWA butuh HTTPS. Caddy menangani otomatis — pastikan kamu akses lewat `https://` (bukan IP).
 - **Login/sync tidak muncul**: pastikan file `.env` ada di VPS dan build ulang dengan `docker compose up -d --build`.
+- **Mixpanel tidak menerima event**: pastikan `NEXT_PUBLIC_MIXPANEL_TOKEN` dan `NEXT_PUBLIC_APP_ENV=production` ada di `.env` sebelum build, lalu rebuild image dan bersihkan cache PWA lama.

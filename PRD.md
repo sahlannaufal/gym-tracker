@@ -163,7 +163,7 @@ Aplikasi web sederhana (MVP) untuk mencatat dan memantau progres latihan beban (
 
 #### Konfigurasi dan verifikasi Mixpanel
 
-- Pada deployment production saja, set `NEXT_PUBLIC_MIXPANEL_TOKEN` ke Project Token dan `NEXT_PUBLIC_APP_ENV=production`. Jangan memasukkan API Secret ke frontend atau variabel `NEXT_PUBLIC_*`.
+- Pada deployment production saja, set `NEXT_PUBLIC_MIXPANEL_TOKEN` ke Project Token dan `NEXT_PUBLIC_APP_ENV=production`. Build Docker meneruskan keduanya sebagai build args karena nilai `NEXT_PUBLIC_*` di-inline oleh Next.js saat build. Jangan memasukkan API Secret ke frontend atau variabel `NEXT_PUBLIC_*`.
 - Development dan staging harus membiarkan `NEXT_PUBLIC_APP_ENV` selain `production` (atau tidak diset), sehingga seluruh operasi SDK menjadi no-op.
 - Di Mixpanel, verifikasi event melalui **Data → Events** dan user melalui **Users / User Profiles**. Buat Insights report dari event yang dibutuhkan, lalu gunakan breakdown user-profile property `$email` untuk melihat aktivitas per akun.
 - `$email` adalah data pribadi dan akses report harus dibatasi hanya untuk pihak yang berwenang.
