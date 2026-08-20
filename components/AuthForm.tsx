@@ -32,6 +32,7 @@ export default function AuthForm() {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
+  const [signupSubmitted, setSignupSubmitted] = useState(false);
 
   if (!isSyncConfigured()) {
     return (
@@ -68,14 +69,14 @@ export default function AuthForm() {
           identifyAndSetUser(data.session.user);
           trackEvent("Login Completed", { login_method: "email_password" });
           requestSync();
-          router.push("/account");
+          router.replace("/");
           return;
         }
 
         setNotice(
-          "Akun berhasil dibuat. Silakan klik link aktivasi yang dikirim ke email kamu untuk mengaktifkan akun, lalu masuk."
+          "Akun berhasil dibuat. Silakan klik link aktivasi yang dikirim ke email kamu."
         );
-        setMode("login");
+        setSignupSubmitted(true);
       } else {
         const { data, error } = await supabase.auth.signInWithPassword({
           email,
@@ -85,7 +86,7 @@ export default function AuthForm() {
         identifyAndSetUser(data.user);
         trackEvent("Login Completed", { login_method: "email_password" });
         requestSync();
-        router.push("/account");
+        router.replace("/");
       }
     } catch (err) {
       if (mode === "login") {
@@ -101,6 +102,35 @@ export default function AuthForm() {
       setBusy(false);
     }
   };
+
+  if (signupSubmitted) {
+    return (
+      <div className="space-y-4 rounded-2xl border border-lime-400/30 bg-lime-400/5 p-6 text-center">
+        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-lime-400 text-2xl font-bold text-gray-950">
+          ✓
+        </div>
+        <div>
+          <h2 className="text-lg font-semibold text-gray-100">Cek email kamu</h2>
+          <p className="mt-2 text-sm text-gray-400">
+            Link aktivasi sudah dikirim ke <span className="font-medium text-gray-200">{email}</span>.
+            Buka link tersebut untuk mengaktifkan akun dan masuk ke aplikasi.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => {
+            setSignupSubmitted(false);
+            setMode("login");
+            setNotice("");
+            setPassword("");
+          }}
+          className="text-sm font-semibold text-lime-400 hover:text-lime-300"
+        >
+          Sudah aktivasi? Masuk
+        </button>
+      </div>
+    );
+  }
 
   return (
     <form
@@ -171,8 +201,7 @@ export default function AuthForm() {
       </button>
 
       <p className="text-center text-xs text-gray-500">
-        Tanpa akun, app tetap bisa dipakai — data hanya tersimpan di perangkat
-        ini.
+        Masuk untuk mengakses dan menyinkronkan data latihanmu.
       </p>
     </form>
   );

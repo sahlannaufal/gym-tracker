@@ -61,7 +61,7 @@ export default function AuthCallbackPage() {
 
       if (data.session) {
         setState({ status: "success" });
-        window.setTimeout(() => router.replace("/account"), 1200);
+        window.setTimeout(() => router.replace("/"), 1200);
       } else if (hadAuthTokenInUrl()) {
         setState({
           status: "error",
@@ -101,7 +101,7 @@ export default function AuthCallbackPage() {
             Email berhasil diverifikasi!
           </p>
           <p className="text-sm text-gray-400">
-            Mengalihkan ke halaman akun...
+            Mengalihkan ke beranda...
           </p>
         </>
       )}

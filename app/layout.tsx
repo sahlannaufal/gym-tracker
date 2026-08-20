@@ -7,6 +7,7 @@ import { SerwistProvider } from "@/components/SerwistProvider";
 import GoogleAnalytics from "@/components/GoogleAnalytics";
 import MixpanelAnalytics from "@/components/MixpanelAnalytics";
 import packageJson from "@/package.json";
+import AuthGate from "@/components/AuthGate";
 
 export const metadata: Metadata = {
   applicationName: "Gym Progress Tracker",
@@ -35,9 +36,11 @@ export default function RootLayout({
     <>
       <MixpanelAnalytics appVersion={packageJson.version} />
       <SyncEngine />
-      <main className="mx-auto w-full max-w-2xl px-4 pt-6 pb-28">{children}</main>
-      <InstallPrompt />
-      <BottomNav />
+      <AuthGate>
+        <main className="mx-auto w-full max-w-2xl px-4 pt-6 pb-28">{children}</main>
+        <InstallPrompt />
+        <BottomNav />
+      </AuthGate>
     </>
   );
 
