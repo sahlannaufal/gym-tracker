@@ -37,6 +37,7 @@ Aplikasi web sederhana (MVP) untuk mencatat dan memantau progres latihan beban (
 - Grafik progress beban sederhana.
 - Program latihan reusable + pemilihan program/rest day per tanggal + quick-log.
 - Floating rest timer yang konsisten pada quick-log dan form tambah workout.
+- Tutorial gerakan untuk latihan bawaan dengan animasi yang dimuat saat diminta.
 - Riwayat pengukuran dan summary komposisi tubuh untuk pengguna yang login.
 - Google Analytics 4 untuk page-view production.
 - Mixpanel Analytics production-only untuk funnel autentikasi, penggunaan workout, progres, dan sinkronisasi.
@@ -168,6 +169,14 @@ Aplikasi web sederhana (MVP) untuk mencatat dan memantau progres latihan beban (
 - Development dan staging harus membiarkan `NEXT_PUBLIC_APP_ENV` selain `production` (atau tidak diset), sehingga seluruh operasi SDK menjadi no-op.
 - Di Mixpanel, verifikasi event melalui **Data → Events** dan user melalui **Users / User Profiles**. Buat Insights report dari event yang dibutuhkan, lalu gunakan breakdown user-profile property `$email` untuk melihat aktivitas per akun.
 - `$email` adalah data pribadi dan akses report harus dibatasi hanya untuk pihak yang berwenang.
+
+### F12. Tutorial Gerakan Latihan
+
+- Setiap kartu latihan pada halaman **Latihan Hari Ini** memiliki tombol **Tutorial** terpisah agar form quick-log tetap ringkas. Picker latihan di editor **Program** menampilkan katalog 1.324 latihan dengan pencarian, filter bagian tubuh/equipment, serta infinite scroll dalam batch 20 item. Batch berikutnya otomatis ditampilkan saat pengguna mencapai item ke-15 dari batch aktif. Latihan populer/legacy berada di urutan awal agar alur lama tetap cepat. Daftar latihan yang sudah dipilih juga menyediakan tombol Tutorial pada setiap baris.
+- Tutorial dibuka sebagai bottom sheet/modal dan berisi animasi GIF, target otot, equipment, serta instruksi langkah demi langkah dalam bahasa Inggris.
+- Katalog ringkas berada di `public/data/exercises/catalog.json`; detail tutorial dibagi menjadi shard berisi maksimal 50 latihan dan baru dimuat sesuai latihan yang dibuka. Respons disimpan dalam cache memori selama sesi. Nama latihan lama dipertahankan melalui alias ID dan nama duplikat diberi label varian agar histori tidak ambigu; nama latihan custom menampilkan state bahwa tutorial belum tersedia.
+- Animasi 180×180 tidak dibundel ke aplikasi. GIF dimuat dari CDN ExerciseDB hanya setelah modal dibuka; kegagalan jaringan menampilkan pesan yang jelas tanpa mengganggu detail teks tutorial.
+- Tutorial tidak mengubah model `Workout`, program latihan, LocalStorage, atau skema sinkronisasi Supabase.
 
 ## 7. Data Model
 

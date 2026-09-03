@@ -7,6 +7,7 @@ import { DAY_LABELS } from "@/lib/types";
 import { formatDate, todayLocalISO, weekdayFromISO } from "@/lib/format";
 import type { Workout, WorkoutInput } from "@/lib/types";
 import FloatingRestTimer from "./FloatingRestTimer";
+import ExerciseTutorialModal from "./ExerciseTutorialModal";
 import type { WorkoutTrackingContext } from "@/lib/useWorkouts";
 
 const inputClass =
@@ -29,6 +30,7 @@ function ExerciseCard({
   onUpdate,
   onDelete,
   onStartRest,
+  onOpenTutorial,
 }: {
   name: string;
   entries: Workout[];
@@ -41,6 +43,7 @@ function ExerciseCard({
   ) => Workout | null;
   onDelete: (id: string) => void;
   onStartRest: (exercise: string) => void;
+  onOpenTutorial: (exercise: string) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [rows, setRows] = useState<SetRow[]>([]);
@@ -185,24 +188,44 @@ function ExerciseCard({
 
   return (
     <li className="rounded-xl border border-gray-800 bg-gray-900/50 p-4">
-      <button
-        type="button"
-        onClick={() => setOpen((current) => !current)}
-        aria-expanded={open}
-        className="flex w-full items-center justify-between gap-3 text-left"
-      >
-        <div className="flex items-center gap-2">
-          <p className="font-semibold text-gray-100">{name}</p>
-          {totalSets > 0 && (
-            <span className="rounded-full bg-lime-400/15 px-2 py-0.5 text-xs font-medium text-lime-400">
-              {totalSets}
-            </span>
-          )}
-        </div>
-        <span
-          className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-gray-700 text-gray-400 transition-transform ${
-            open ? "rotate-180" : ""
-          }`}
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={() => setOpen((current) => !current)}
+          aria-expanded={open}
+          className="flex min-w-0 flex-1 items-center justify-between gap-3 text-left"
+        >
+          <div className="flex min-w-0 items-center gap-2">
+            <p className="truncate font-semibold text-gray-100">{name}</p>
+            {totalSets > 0 && (
+              <span className="rounded-full bg-lime-400/15 px-2 py-0.5 text-xs font-medium text-lime-400">
+                {totalSets}
+              </span>
+            )}
+          </div>
+          <span
+            className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-gray-700 text-gray-400 transition-transform ${
+              open ? "rotate-180" : ""
+            }`}
+          >
+            <svg
+              className="h-4 w-4"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="m6 9 6 6 6-6" />
+            </svg>
+          </span>
+        </button>
+        <button
+          type="button"
+          onClick={() => onOpenTutorial(name)}
+          aria-label={`Buka tutorial ${name}`}
+          className="flex h-9 shrink-0 items-center gap-1.5 rounded-xl border border-lime-400/30 bg-lime-400/10 px-2.5 text-xs font-semibold text-lime-400 hover:bg-lime-400/20"
         >
           <svg
             className="h-4 w-4"
@@ -213,10 +236,11 @@ function ExerciseCard({
             strokeLinecap="round"
             strokeLinejoin="round"
           >
-            <path d="m6 9 6 6 6-6" />
+            <path d="M8 5v14l11-7z" />
           </svg>
-        </span>
-      </button>
+          Tutorial
+        </button>
+      </div>
 
       {open && (
         <div className="mt-4 border-t border-gray-800 pt-4">
@@ -309,6 +333,7 @@ export default function TodayWorkout({
   const [timerOpen, setTimerOpen] = useState(false);
   const [timerExercise, setTimerExercise] = useState<string>();
   const [timerRestartKey, setTimerRestartKey] = useState(0);
+  const [tutorialExercise, setTutorialExercise] = useState<string>();
 
   const startRestTimer = (exercise: string) => {
     setTimerExercise(exercise);
@@ -412,6 +437,7 @@ export default function TodayWorkout({
               onUpdate={updateWorkout}
               onDelete={removeWorkout}
               onStartRest={startRestTimer}
+              onOpenTutorial={setTutorialExercise}
             />
           ))}
         </ul>
@@ -422,6 +448,10 @@ export default function TodayWorkout({
         restartKey={timerRestartKey}
         exercise={timerExercise}
         onClose={() => setTimerOpen(false)}
+      />
+      <ExerciseTutorialModal
+        exercise={tutorialExercise}
+        onClose={() => setTutorialExercise(undefined)}
       />
     </section>
   );

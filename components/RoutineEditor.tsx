@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { useTrainingPrograms } from "@/lib/useTrainingPrograms";
-import { CUSTOM_EXERCISE_VALUE, EXERCISE_CATEGORIES } from "@/lib/constants/exercises";
 import type { TrainingProgram } from "@/lib/types";
+import ExerciseCatalogPicker from "./ExerciseCatalogPicker";
+import ExerciseTutorialModal from "./ExerciseTutorialModal";
 
 const fieldClass =
   "w-full rounded-xl border border-gray-700 bg-gray-900 px-4 py-2.5 text-gray-100 " +
@@ -22,6 +23,8 @@ function ProgramForm({
   const [exercises, setExercises] = useState(initial?.exercises ?? []);
   const [customOpen, setCustomOpen] = useState(false);
   const [customName, setCustomName] = useState("");
+  const [exercisePickerOpen, setExercisePickerOpen] = useState(false);
+  const [tutorialExercise, setTutorialExercise] = useState<string>();
   const [error, setError] = useState("");
 
   const addExercise = (exercise: string) => {
@@ -46,32 +49,76 @@ function ProgramForm({
         {exercises.length > 0 && (
           <ul className="mb-3 space-y-2">
             {exercises.map((exercise, index) => (
-              <li key={exercise} className="flex items-center justify-between rounded-xl bg-gray-950/70 px-3 py-2 text-sm">
-                <span><span className="mr-2 text-gray-600">{index + 1}.</span>{exercise}</span>
-                <button type="button" onClick={() => setExercises((items) => items.filter((item) => item !== exercise))} aria-label={`Hapus ${exercise}`} className="text-xl text-gray-500 hover:text-red-400">×</button>
+              <li key={exercise} className="flex items-center justify-between gap-2 rounded-xl bg-gray-950/70 px-3 py-2 text-sm">
+                <span className="min-w-0 flex-1 truncate"><span className="mr-2 text-gray-600">{index + 1}.</span>{exercise}</span>
+                <div className="flex shrink-0 items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => setTutorialExercise(exercise)}
+                    aria-label={`Buka tutorial ${exercise}`}
+                    className="flex h-8 items-center gap-1 rounded-lg px-2 text-xs font-semibold text-lime-400 hover:bg-lime-400/10"
+                  >
+                    <svg
+                      className="h-3.5 w-3.5"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden="true"
+                    >
+                      <path d="M8 5v14l11-7z" />
+                    </svg>
+                    Tutorial
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setExercises((items) => items.filter((item) => item !== exercise))}
+                    aria-label={`Hapus ${exercise}`}
+                    className="flex h-8 w-8 items-center justify-center rounded-lg text-xl text-gray-500 hover:bg-red-950/40 hover:text-red-400"
+                  >
+                    ×
+                  </button>
+                </div>
               </li>
             ))}
           </ul>
         )}
-        <select
-          defaultValue=""
-          onChange={(event) => {
-            const value = event.target.value;
-            event.target.value = "";
-            if (value === CUSTOM_EXERCISE_VALUE) setCustomOpen(true);
-            else addExercise(value);
-            setError("");
-          }}
-          className={fieldClass}
+        <button
+          type="button"
+          onClick={() => setExercisePickerOpen((open) => !open)}
+          aria-expanded={exercisePickerOpen}
+          className={`${fieldClass} flex items-center justify-between text-left`}
         >
-          <option value="" disabled>Tambah latihan...</option>
-          {EXERCISE_CATEGORIES.map((group) => (
-            <optgroup key={group.category} label={group.category}>
-              {group.exercises.map((exercise) => <option key={exercise}>{exercise}</option>)}
-            </optgroup>
-          ))}
-          <option value={CUSTOM_EXERCISE_VALUE}>Lainnya (Custom)...</option>
-        </select>
+          <span className="text-gray-400">Tambah latihan...</span>
+          <svg
+            className={`h-4 w-4 text-gray-500 transition-transform ${exercisePickerOpen ? "rotate-180" : ""}`}
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+          >
+            <path d="m6 9 6 6 6-6" />
+          </svg>
+        </button>
+        {exercisePickerOpen && (
+          <div className="mt-2 rounded-xl border border-gray-700 bg-gray-950 p-2 shadow-xl">
+            <ExerciseCatalogPicker
+              selected={exercises}
+              onAdd={(exercise) => {
+                addExercise(exercise);
+                setExercisePickerOpen(false);
+                setError("");
+              }}
+              onTutorial={setTutorialExercise}
+              onCustom={() => {
+                setCustomOpen(true);
+                setExercisePickerOpen(false);
+              }}
+            />
+          </div>
+        )}
         {customOpen && (
           <div className="mt-2 flex gap-2">
             <input value={customName} onChange={(event) => setCustomName(event.target.value)} placeholder="Nama latihan custom" className={fieldClass} />
@@ -85,6 +132,10 @@ function ProgramForm({
         <button type="button" onClick={submit} className="rounded-xl bg-lime-400 px-5 py-2.5 font-semibold text-gray-950 hover:bg-lime-300">Simpan Program</button>
         <button type="button" onClick={onCancel} className="rounded-xl border border-gray-700 px-5 py-2.5 text-gray-300 hover:bg-gray-800">Batal</button>
       </div>
+      <ExerciseTutorialModal
+        exercise={tutorialExercise}
+        onClose={() => setTutorialExercise(undefined)}
+      />
     </div>
   );
 }
