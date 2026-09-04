@@ -17,6 +17,7 @@ const PAGE_NAMES: Record<string, string> = {
 };
 
 let appOpenedTracked = false;
+let pwaOpenedTracked = false;
 
 function isPwa(): boolean {
   const standaloneNavigator = navigator as Navigator & { standalone?: boolean };
@@ -63,13 +64,24 @@ function Tracker({ appVersion }: { appVersion: string }) {
 
   useEffect(() => {
     if (!authResolved || appOpenedTracked) return;
+    const openedAsPwa = isPwa();
     appOpenedTracked = true;
     trackEvent("App Opened", {
       platform: navigator.platform || "web",
-      is_pwa: isPwa(),
+      is_pwa: openedAsPwa,
       app_version: appVersion,
       is_authenticated: authenticatedRef.current,
     });
+
+    if (openedAsPwa && !pwaOpenedTracked) {
+      pwaOpenedTracked = true;
+      trackEvent("PWA Opened", {
+        platform: navigator.platform || "web",
+        app_version: appVersion,
+        is_authenticated: authenticatedRef.current,
+        detection_method: "standalone_display_mode",
+      });
+    }
   }, [appVersion, authResolved]);
 
   useEffect(() => {
