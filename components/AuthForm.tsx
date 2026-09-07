@@ -20,6 +20,20 @@ function normalizeLoginFailure(error: unknown): string {
   return "server_error";
 }
 
+function normalizeRegistrationFailure(error: unknown): string {
+  const authError = error as { code?: string; message?: string } | null;
+  const code = authError?.code?.toLowerCase() ?? "";
+  const message = authError?.message?.toLowerCase() ?? "";
+  const detail = `${code} ${message}`;
+
+  if (detail.includes("rate") || detail.includes("too many")) return "rate_limited";
+  if (detail.includes("already") || detail.includes("exists")) return "account_already_exists";
+  if (detail.includes("weak") || detail.includes("password")) return "invalid_password";
+  if (detail.includes("email")) return "invalid_email";
+  if (detail.includes("network") || detail.includes("fetch")) return "network_error";
+  return "server_error";
+}
+
 const inputClass =
   "w-full rounded-xl border border-gray-700 bg-gray-900 px-4 py-2.5 text-gray-100 " +
   "placeholder-gray-500 focus:border-lime-400 focus:outline-none focus:ring-1 focus:ring-lime-400";
@@ -63,6 +77,22 @@ export default function AuthForm() {
         });
         if (error) throw error;
 
+        // Supabase dapat mengembalikan user tersamarkan tanpa identities untuk
+        // email yang sudah terdaftar agar status akun tidak bocor ke UI.
+        const existingAccount = data.user?.identities?.length === 0;
+        if (existingAccount) {
+          trackEvent("Registration Failed", {
+            registration_method: "email_password",
+            failed_reason: "account_already_exists",
+          });
+        } else {
+          if (data.user) identifyAndSetUser(data.user);
+          trackEvent("Registration Completed", {
+            registration_method: "email_password",
+            verification_required: !data.session,
+          });
+        }
+
         // Konfirmasi email nonaktif -> signUp sudah mengembalikan session,
         // langsung login tanpa perlu membuka link verifikasi.
         if (data.session) {
@@ -93,6 +123,11 @@ export default function AuthForm() {
         trackEvent("Login Failed", {
           login_method: "email_password",
           failed_reason: normalizeLoginFailure(err),
+        });
+      } else {
+        trackEvent("Registration Failed", {
+          registration_method: "email_password",
+          failed_reason: normalizeRegistrationFailure(err),
         });
       }
       setError(
