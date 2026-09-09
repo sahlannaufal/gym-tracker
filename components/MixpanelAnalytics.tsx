@@ -12,7 +12,9 @@ const PAGE_NAMES: Record<string, string> = {
   "/progress": "Progres",
   "/account": "Profil",
   "/login": "Masuk / Daftar",
+  "/forgot-password": "Lupa Password",
   "/auth/callback": "Konfirmasi Akun",
+  "/auth/reset-password": "Buat Password Baru",
   "/~offline": "Offline",
 };
 

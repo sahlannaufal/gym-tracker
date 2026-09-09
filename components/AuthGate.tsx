@@ -4,7 +4,13 @@ import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/lib/useAuth";
 
-const PUBLIC_PATHS = new Set(["/login", "/auth/callback", "/~offline"]);
+const PUBLIC_PATHS = new Set([
+  "/login",
+  "/forgot-password",
+  "/auth/callback",
+  "/auth/reset-password",
+  "/~offline",
+]);
 
 export default function AuthGate({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -23,7 +29,11 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
   }, [redirectTo, router]);
 
   // Callback harus segera dirender agar Supabase dapat memproses token URL.
-  if (pathname === "/auth/callback" || pathname === "/~offline") {
+  if (
+    pathname === "/auth/callback" ||
+    pathname === "/auth/reset-password" ||
+    pathname === "/~offline"
+  ) {
     return children;
   }
 

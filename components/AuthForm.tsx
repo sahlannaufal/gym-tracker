@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { isSyncConfigured, supabase } from "@/lib/supabase/client";
 import { requestSync } from "@/lib/sync";
 import { identifyAndSetUser, trackEvent } from "@/lib/analytics";
@@ -209,8 +210,13 @@ export default function AuthForm() {
       </label>
 
       <label className="block">
-        <span className="mb-1.5 block text-sm font-medium text-gray-300">
-          Password
+        <span className="mb-1.5 flex items-center justify-between gap-3 text-sm font-medium text-gray-300">
+          <span>Password</span>
+          {mode === "login" && (
+            <Link href="/forgot-password" className="text-xs font-semibold text-lime-400 hover:text-lime-300">
+              Lupa password?
+            </Link>
+          )}
         </span>
         <input
           type="password"
