@@ -6,6 +6,7 @@ import Link from "next/link";
 import { isSyncConfigured, supabase } from "@/lib/supabase/client";
 import { requestSync } from "@/lib/sync";
 import { identifyAndSetUser, trackEvent } from "@/lib/analytics";
+import PasswordInput from "./PasswordInput";
 
 function normalizeLoginFailure(error: unknown): string {
   const message = error instanceof Error ? error.message.toLowerCase() : "";
@@ -209,26 +210,19 @@ export default function AuthForm() {
         />
       </label>
 
-      <label className="block">
-        <span className="mb-1.5 flex items-center justify-between gap-3 text-sm font-medium text-gray-300">
-          <span>Password</span>
-          {mode === "login" && (
+      <PasswordInput
+        label="Password"
+        value={password}
+        onChange={setPassword}
+        autoComplete={mode === "login" ? "current-password" : "new-password"}
+        action={
+          mode === "login" ? (
             <Link href="/forgot-password" className="text-xs font-semibold text-lime-400 hover:text-lime-300">
               Lupa password?
             </Link>
-          )}
-        </span>
-        <input
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          placeholder="••••••••"
-          required
-          minLength={6}
-          autoComplete={mode === "login" ? "current-password" : "new-password"}
-          className={inputClass}
-        />
-      </label>
+          ) : undefined
+        }
+      />
 
       {error && <p className="text-sm text-red-400">{error}</p>}
       {notice && <p className="text-sm text-lime-400">{notice}</p>}

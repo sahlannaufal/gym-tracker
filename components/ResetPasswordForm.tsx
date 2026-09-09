@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase/client";
 import { trackEvent } from "@/lib/analytics";
+import PasswordInput from "./PasswordInput";
 
 type RecoveryState = "checking" | "ready" | "invalid" | "success";
 
@@ -94,14 +95,8 @@ export default function ResetPasswordForm() {
       }}
       className="space-y-4 rounded-2xl border border-gray-800 bg-gray-900/50 p-5"
     >
-      <label className="block">
-        <span className="mb-1.5 block text-sm font-medium text-gray-300">Password baru</span>
-        <input type="password" value={password} onChange={(event) => setPassword(event.target.value)} required minLength={6} autoComplete="new-password" className="w-full rounded-xl border border-gray-700 bg-gray-900 px-4 py-2.5 text-gray-100 focus:border-lime-400 focus:outline-none focus:ring-1 focus:ring-lime-400" />
-      </label>
-      <label className="block">
-        <span className="mb-1.5 block text-sm font-medium text-gray-300">Konfirmasi password baru</span>
-        <input type="password" value={confirmation} onChange={(event) => setConfirmation(event.target.value)} required minLength={6} autoComplete="new-password" className="w-full rounded-xl border border-gray-700 bg-gray-900 px-4 py-2.5 text-gray-100 focus:border-lime-400 focus:outline-none focus:ring-1 focus:ring-lime-400" />
-      </label>
+      <PasswordInput label="Password baru" value={password} onChange={setPassword} autoComplete="new-password" />
+      <PasswordInput label="Konfirmasi password baru" value={confirmation} onChange={setConfirmation} autoComplete="new-password" />
       {error && <p className="text-sm text-red-400">{error}</p>}
       <button type="submit" disabled={busy} className="w-full rounded-xl bg-lime-400 px-5 py-3 font-semibold text-gray-950 hover:bg-lime-300 disabled:opacity-50">
         {busy ? "Menyimpan..." : "Simpan Password Baru"}
