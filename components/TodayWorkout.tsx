@@ -193,33 +193,14 @@ function ExerciseCard({
           type="button"
           onClick={() => setOpen((current) => !current)}
           aria-expanded={open}
-          className="flex min-w-0 flex-1 items-center justify-between gap-3 text-left"
+          className="flex min-w-0 flex-1 items-center gap-2 text-left"
         >
-          <div className="flex min-w-0 items-center gap-2">
-            <p className="truncate font-semibold text-gray-100">{name}</p>
-            {totalSets > 0 && (
-              <span className="rounded-full bg-lime-400/15 px-2 py-0.5 text-xs font-medium text-lime-400">
-                {totalSets}
-              </span>
-            )}
-          </div>
-          <span
-            className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-gray-700 text-gray-400 transition-transform ${
-              open ? "rotate-180" : ""
-            }`}
-          >
-            <svg
-              className="h-4 w-4"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="m6 9 6 6 6-6" />
-            </svg>
-          </span>
+          <p className="truncate font-semibold text-gray-100">{name}</p>
+          {totalSets > 0 && (
+            <span className="rounded-full bg-lime-400/15 px-2 py-0.5 text-xs font-medium text-lime-400">
+              {totalSets}
+            </span>
+          )}
         </button>
         <button
           type="button"
@@ -239,6 +220,26 @@ function ExerciseCard({
             <path d="M8 5v14l11-7z" />
           </svg>
           Tutorial
+        </button>
+        <button
+          type="button"
+          onClick={() => setOpen((current) => !current)}
+          aria-expanded={open}
+          aria-label={`${open ? "Tutup" : "Buka"} catatan ${name}`}
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-gray-700 text-gray-400"
+        >
+          <svg
+            className={`h-4 w-4 transition-transform ${open ? "rotate-180" : ""}`}
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <path d="m6 9 6 6 6-6" />
+          </svg>
         </button>
       </div>
 
@@ -329,7 +330,7 @@ export default function TodayWorkout({
 }) {
   const { store, setAssignment, clearAssignment } = useTrainingPrograms();
   const { workouts, addWorkout, updateWorkout, removeWorkout } = useWorkouts();
-  const [date, setDate] = useState(todayLocalISO());
+  const date = todayLocalISO();
   const [timerOpen, setTimerOpen] = useState(false);
   const [timerExercise, setTimerExercise] = useState<string>();
   const [timerRestartKey, setTimerRestartKey] = useState(0);
@@ -363,19 +364,9 @@ export default function TodayWorkout({
         </p>
       </div>
 
-      <label className="block max-w-xs">
-        <span className="mb-1 block text-sm text-gray-400">Pilih Tanggal</span>
-        <input
-          type="date"
-          value={date}
-          onChange={(event) => setDate(event.target.value || todayLocalISO())}
-          className={inputClass}
-        />
-      </label>
-
       <div className="rounded-2xl border border-gray-800 bg-gray-900/50 p-4">
         <label className="block">
-          <span className="mb-1 block text-sm text-gray-400">Program untuk tanggal ini</span>
+          <span className="mb-1 block text-sm text-gray-400">Pilih program latihan</span>
           <select
             value={!assignment ? "" : assignment.programId ?? "__rest__"}
             onChange={(event) => {
@@ -393,7 +384,7 @@ export default function TodayWorkout({
           </select>
         </label>
         {selectedProgram && (
-          <p className="mt-2 text-sm text-lime-400">{selectedProgram.name} · {selectedProgram.exercises.length} latihan</p>
+          <p className="mt-2 text-sm text-lime-400">{selectedProgram.exercises.length} latihan</p>
         )}
       </div>
 
@@ -414,7 +405,7 @@ export default function TodayWorkout({
       ) : assignment.programId === null ? (
         <div className="rounded-2xl border border-dashed border-gray-700 p-8 text-center">
           <p className="text-lg font-semibold text-gray-200">Rest Day</p>
-          <p className="mt-1 text-sm text-gray-500">Tidak ada latihan yang dijadwalkan pada tanggal ini.</p>
+          <p className="mt-1 text-sm text-gray-500">Tidak ada latihan yang dijadwalkan hari ini.</p>
         </div>
       ) : !selectedProgram ? (
         <div className="rounded-2xl border border-dashed border-red-900/70 p-8 text-center text-red-300">Program tidak ditemukan. Silakan pilih program lain.</div>

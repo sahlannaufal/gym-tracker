@@ -6,6 +6,7 @@ import { useTrainingPrograms } from "@/lib/useTrainingPrograms";
 import type { TrainingProgramStore, Workout } from "@/lib/types";
 import { currentWeekRange, formatDateShort, todayLocalISO } from "@/lib/format";
 import { getExerciseMuscles } from "@/lib/constants/exerciseMuscles";
+import ActivityHeatmap from "./ActivityHeatmap";
 
 function StatCard({ label, value }: { label: string; value: number }) {
   return (
@@ -89,6 +90,7 @@ export default function Dashboard() {
       <section className="space-y-4">
         <h1 className="text-2xl font-bold">Dashboard</h1>
         <TodayProgramCard store={store} />
+        <ActivityHeatmap workouts={workouts} />
         <div className="rounded-2xl border border-dashed border-gray-700 p-8 text-center">
           <p className="text-gray-300">
             Belum ada latihan tercatat.
@@ -169,6 +171,8 @@ export default function Dashboard() {
         <StatCard label="Sesi Minggu Ini" value={weekSessions} />
         <StatCard label="Set Minggu Ini" value={weekTotalSets} />
       </div>
+
+      <ActivityHeatmap workouts={actualWorkouts} />
 
       {personalBest && (
         <DetailCard

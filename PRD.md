@@ -63,6 +63,7 @@ Aplikasi web sederhana (MVP) untuk mencatat dan memantau progres latihan beban (
   - Otot terakhir dilatih dari seluruh workout pada tanggal aktual terbaru: primary muscles diprioritaskan, diikuti secondary muscles, maksimal tiga nama + jumlah sisanya; dilengkapi jumlah latihan unik dan total set.
 - Menampilkan tombol aksi utama **"Tambah Latihan"**.
 - Dashboard otomatis ter-refresh saat data berubah.
+- Menampilkan heatmap **Aktivitas 12 Bulan Terakhir** bergaya contribution graph GitHub: 52 kolom minggu × 7 baris hari tanpa interaksi per kotak. Nama bulan berada di atas kelompok minggu dan grid dapat digeser horizontal pada layar sempit. Intensitas warna dihitung dari total set harian (0, 1–3, 4–6, 7–10, dan >10 set), dilengkapi jumlah minggu aktif tanpa skor persentase konsistensi.
 - Metadata `primaryMuscles`/`secondaryMuscles` untuk latihan bawaan disimpan statis di `lib/constants/exerciseMuscles.ts`, terpisah dari model workout agar offline-ready dan tidak memerlukan migrasi storage/database. Latihan custom menggunakan fallback `Lainnya`.
 
 ### F2. Form Pencatatan Workout
@@ -109,12 +110,12 @@ Aplikasi web sederhana (MVP) untuk mencatat dan memantau progres latihan beban (
 
 - Pengguna dapat membuat beberapa **program latihan reusable** dengan nama bebas dan daftar latihan dari `EXERCISE_CATEGORIES` atau nama custom. Program dapat dibuat, diedit, dan dihapus.
 - Editor **Program** tersedia sebagai view kedua di `/today` (`?view=program`). Route lama `/routine` dipertahankan sebagai redirect kompatibilitas ke view Program.
-- Halaman **"Latihan Hari Ini"** (`/today`) menyediakan date picker (default hari ini, dapat memilih tanggal mendatang), lalu pengguna memilih satu program untuk tanggal itu, memilih **Rest Day**, atau membiarkannya belum dipilih. Tidak ada jadwal mingguan/default otomatis pada versi ini.
-- Pemilihan program disimpan langsung per tanggal (`YYYY-MM-DD`). Mengganti pilihan tidak mengubah isi program atau histori workout yang sudah tercatat.
-- Setelah program dipilih, daftar latihannya tampil untuk tanggal tersebut. Saat kartu latihan dibuka, form pencatatan set tampil langsung secara inline: tiap baris berisi beban (kg) dan repetisi, data sesi terakhir menjadi prefill awal, serta tombol **"Tambah Set"** membuat dan langsung menyimpan baris baru dengan nilai dari baris sebelumnya. Perubahan nilai disimpan otomatis saat input selesai diedit; tidak ada tombol simpan terpisah.
-- Tiap latihan di list menampilkan **badge jumlah set** pada tanggal terpilih. Baris pada form inline sekaligus merepresentasikan histori set di tanggal tersebut; ikon **×** menghapus workout tersimpan beserta tombstone sinkronisasinya.
+- Halaman **"Latihan Hari Ini"** (`/today`) langsung memakai tanggal lokal hari ini tanpa date picker. Pengguna memilih satu program untuk hari ini, memilih **Rest Day**, atau membiarkannya belum dipilih. Tidak ada jadwal mingguan/default otomatis pada versi ini.
+- Pemilihan program tetap disimpan dengan key tanggal hari ini (`YYYY-MM-DD`). Mengganti pilihan tidak mengubah isi program atau histori workout yang sudah tercatat. Ringkasan pilihan menampilkan jumlah latihan tanpa mengulang nama program yang sudah terlihat pada dropdown.
+- Setelah program dipilih, daftar latihannya tampil untuk hari ini. Saat kartu latihan dibuka, form pencatatan set tampil langsung secara inline: tiap baris berisi beban (kg) dan repetisi, data sesi terakhir menjadi prefill awal, serta tombol **"Tambah Set"** membuat dan langsung menyimpan baris baru dengan nilai dari baris sebelumnya. Perubahan nilai disimpan otomatis saat input selesai diedit; tidak ada tombol simpan terpisah.
+- Tiap latihan di list menampilkan **badge jumlah set** hari ini. Baris pada form inline sekaligus merepresentasikan histori set hari ini; ikon **×** menghapus workout tersimpan beserta tombstone sinkronisasinya.
 - Dashboard menampilkan kartu ringkas "Latihan Hari Ini" berupa nama program + jumlah latihan, Rest Day, atau status belum memilih, dengan tombol menuju `/today`.
-- Empty state tanggal yang belum dipilih menampilkan link ke editor Program; Rest Day memiliki state khusus.
+- Empty state hari yang belum dipilih menampilkan link ke editor Program; Rest Day memiliki state khusus.
 - Migrasi lokal satu kali mengubah setiap hari pada rutin lama yang tidak kosong menjadi program bernama `Rutin <Nama Hari>` tanpa menjadwalkannya otomatis ke tanggal tertentu.
 
 ### F7. Sinkronisasi Cloud (Supabase) & Login
@@ -188,6 +189,12 @@ Aplikasi web sederhana (MVP) untuk mencatat dan memantau progres latihan beban (
 - Halaman marketing dirender sebagai konten server yang dapat diindeks, memakai metadata unik, canonical production, Open Graph, serta structured data `SoftwareApplication` tanpa rating/review buatan. Route dicantumkan sebagai prioritas utama di `/sitemap.xml` dan sitemap diumumkan melalui `/robots.txt`.
 - Route marketing tidak menampilkan bottom navigation, FAB, atau install prompt aplikasi. CTA mengarah ke `/login`; autentikasi dan seluruh halaman data pengguna tetap berada di balik auth gate.
 - Setiap CTA marketing dicatat sebagai `Landing CTA Clicked` dengan nama, tujuan, dan status apakah menuju autentikasi. CTA autentikasi menyimpan attribution first-party maksimal dua jam; `Registration Completed`/`Login Completed` berikutnya membawa `entry_source: landing_page` dan `landing_cta`, sehingga funnel landing → CTA → autentikasi dapat dianalisis tanpa menyimpan data pribadi di event CTA.
+
+### F14. Security Headers & CSP
+
+- Seluruh route mengirim `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy`, `X-Frame-Options`, `Cross-Origin-Opener-Policy`, dan HSTS. Header identifikasi framework `X-Powered-By` dinonaktifkan.
+- Content Security Policy diterapkan lebih dahulu sebagai `Content-Security-Policy-Report-Only`, sehingga pelanggaran dilaporkan di console browser tetapi tidak memblokir fitur pengguna. Sumber eksternal dibatasi pada integrasi aplikasi: Supabase, Google Analytics/Tag Manager, Mixpanel, Google Accounts, dan CDN GIF ExerciseDB.
+- CSP baru boleh diubah menjadi mode enforcement setelah login email/Google, sinkronisasi Supabase, analytics, tutorial GIF, manifest, dan service worker PWA lolos pengujian production tanpa pelanggaran CSP yang valid. Endpoint pengumpulan laporan belum diaktifkan pada tahap ini.
 
 ## 7. Data Model
 
@@ -266,7 +273,7 @@ v      v                          |
 ```
 
 - **Bottom navigation (mobile-first):** tab bawah tetap — **Beranda** (`/`), **Hari Ini** (`/today`), FAB **+ Tambah** (`/workout/new`), **Progres** (`/progress`), **Profil** (`/account`).
-- **Hari Ini** memuat dua view (segmented control): **Latihan** (date picker + pilihan program/Rest Day + quick-log) dan **Program** (buat/edit/hapus paket latihan). `/routine` redirect → `/today?view=program`.
+- **Hari Ini** memuat dua view (segmented control): **Latihan** (tanggal otomatis hari ini + pilihan program/Rest Day + quick-log) dan **Program** (buat/edit/hapus paket latihan). `/routine` redirect → `/today?view=program`.
 - **Progres** memuat dua view (segmented control): **Riwayat** (list histori + filter latihan/rentang tanggal + hapus) dan **Grafik** (chart beban per latihan). `/history` redirect → `/progress`.
 - Setelah simpan entri: kembali ke Dashboard.
 - Dashboard menampilkan kartu "Latihan Hari Ini" berisi nama program, jumlah latihan, Rest Day, atau status belum memilih → `/today`.
