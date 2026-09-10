@@ -3,8 +3,58 @@
 import { useEffect, useState } from "react";
 import { loadExerciseTutorial, type ExerciseTutorial } from "@/lib/exerciseCatalog";
 
+const LABELS: Record<string, string> = {
+  assisted: "Alat bantu",
+  band: "Band",
+  "body weight": "Berat badan",
+  "bosu ball": "Bola BOSU",
+  cable: "Kabel",
+  dumbbell: "Dumbel",
+  barbell: "Barbel",
+  "elliptical machine": "Mesin eliptikal",
+  "ez barbell": "Barbel EZ",
+  hammer: "Palu",
+  kettlebell: "Kettlebell",
+  "leverage machine": "Mesin beban",
+  "medicine ball": "Bola medis",
+  "olympic barbell": "Barbel Olimpiade",
+  "resistance band": "Resistance band",
+  roller: "Rol",
+  rope: "Tali",
+  "skierg machine": "Mesin SkiErg",
+  "smith machine": "Mesin Smith",
+  "sled machine": "Mesin leg press",
+  "stability ball": "Bola stabilitas",
+  "stationary bike": "Sepeda statis",
+  "stepmill machine": "Mesin stepmill",
+  tire: "Ban",
+  "trap bar": "Trap bar",
+  "upper body ergometer": "Ergometer tubuh bagian atas",
+  weighted: "Beban tambahan",
+  "wheel roller": "Roda latihan",
+  abductors: "Abduktor paha",
+  adductors: "Adduktor paha",
+  pectorals: "Dada",
+  delts: "Bahu",
+  quads: "Paha depan",
+  glutes: "Bokong",
+  hamstrings: "Paha belakang",
+  lats: "Punggung lebar",
+  abs: "Perut",
+  biceps: "Bisep",
+  triceps: "Trisep",
+  calves: "Betis",
+  forearms: "Lengan bawah",
+  "cardiovascular system": "Kardiovaskular",
+  "levator scapulae": "Levator skapula",
+  "serratus anterior": "Serratus anterior",
+  spine: "Punggung bawah",
+  traps: "Trapezius",
+  "upper back": "Punggung atas",
+};
+
 function label(value: string) {
-  return value.replace(/\b\w/g, (character) => character.toUpperCase());
+  return LABELS[value.toLowerCase()] ?? value.replace(/\b\w/g, (character) => character.toUpperCase());
 }
 
 export default function ExerciseTutorialModal({
@@ -130,13 +180,13 @@ export default function ExerciseTutorialModal({
                 <p className="mt-1 font-medium text-gray-200">{label(tutorial.target)}</p>
               </div>
               <div className="rounded-xl bg-gray-900 p-3">
-                <p className="text-xs text-gray-500">Equipment</p>
+                <p className="text-xs text-gray-500">Peralatan</p>
                 <p className="mt-1 font-medium text-gray-200">{label(tutorial.equipment)}</p>
               </div>
             </div>
 
             <div>
-              <h3 className="font-semibold text-gray-100">Instructions</h3>
+              <h3 className="font-semibold text-gray-100">Petunjuk Gerakan</h3>
               <ol className="mt-3 space-y-3">
                 {tutorial.instructions.map((instruction, index) => (
                   <li key={`${tutorial.id}-${index}`} className="flex gap-3 text-sm leading-6 text-gray-300">
@@ -148,6 +198,11 @@ export default function ExerciseTutorialModal({
                 ))}
               </ol>
             </div>
+
+            <p className="rounded-xl border border-amber-900/40 bg-amber-950/20 p-3 text-xs leading-5 text-amber-100/80">
+              Gunakan tutorial sebagai panduan umum. Hentikan latihan jika terasa sakit dan mintalah
+              bantuan pelatih jika Anda belum memahami teknik gerakannya.
+            </p>
 
             <p className="border-t border-gray-800 pt-4 text-center text-[11px] text-gray-500">
               ExerciseDB / © Gym Visual —{" "}

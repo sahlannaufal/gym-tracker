@@ -6,6 +6,7 @@ import Link from "next/link";
 import { isSyncConfigured, supabase } from "@/lib/supabase/client";
 import { requestSync } from "@/lib/sync";
 import { identifyAndSetUser, trackEvent } from "@/lib/analytics";
+import { consumeOAuthIntent, saveOAuthIntent } from "@/lib/oauthIntent";
 import PasswordInput from "./PasswordInput";
 
 function normalizeLoginFailure(error: unknown): string {
@@ -140,6 +141,41 @@ export default function AuthForm() {
     }
   };
 
+  const handleGoogleAuth = async () => {
+    if (!supabase) return;
+    setBusy(true);
+    setError("");
+    setNotice("");
+
+    const action = mode;
+    saveOAuthIntent({ provider: "google", action, startedAt: Date.now() });
+
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+        },
+      });
+      if (error) throw error;
+    } catch (err) {
+      consumeOAuthIntent();
+      if (action === "login") {
+        trackEvent("Login Failed", {
+          login_method: "google",
+          failed_reason: normalizeLoginFailure(err),
+        });
+      } else {
+        trackEvent("Registration Failed", {
+          registration_method: "google",
+          failed_reason: normalizeRegistrationFailure(err),
+        });
+      }
+      setError(err instanceof Error ? err.message : "Gagal terhubung ke Google. Coba lagi.");
+      setBusy(false);
+    }
+  };
+
   if (signupSubmitted) {
     return (
       <div className="space-y-4 rounded-2xl border border-lime-400/30 bg-lime-400/5 p-6 text-center">
@@ -233,6 +269,27 @@ export default function AuthForm() {
         className="w-full rounded-xl bg-lime-400 px-5 py-3 font-semibold text-gray-950 transition-colors hover:bg-lime-300 disabled:opacity-50"
       >
         {busy ? "Memproses..." : mode === "login" ? "Masuk" : "Buat Akun"}
+      </button>
+
+      <div className="flex items-center gap-3" aria-hidden="true">
+        <span className="h-px flex-1 bg-gray-800" />
+        <span className="text-xs font-medium text-gray-500">Or</span>
+        <span className="h-px flex-1 bg-gray-800" />
+      </div>
+
+      <button
+        type="button"
+        disabled={busy}
+        onClick={handleGoogleAuth}
+        className="flex w-full items-center justify-center gap-3 rounded-xl border border-gray-700 bg-white px-5 py-3 font-semibold text-gray-900 transition-colors hover:bg-gray-100 disabled:opacity-50"
+      >
+        <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5">
+          <path fill="#4285F4" d="M21.6 12.23c0-.71-.06-1.4-.18-2.07H12v3.91h5.38a4.6 4.6 0 0 1-2 3.02v2.54h3.24c1.9-1.75 2.98-4.33 2.98-7.4Z" />
+          <path fill="#34A853" d="M12 22c2.7 0 4.98-.9 6.63-2.43l-3.24-2.54c-.9.6-2.05.97-3.39.97-2.61 0-4.82-1.76-5.61-4.13H3.04v2.62A10 10 0 0 0 12 22Z" />
+          <path fill="#FBBC05" d="M6.39 13.87A6.02 6.02 0 0 1 6.07 12c0-.65.11-1.28.32-1.87V7.51H3.04A10 10 0 0 0 2 12c0 1.61.38 3.13 1.04 4.49l3.35-2.62Z" />
+          <path fill="#EA4335" d="M12 6c1.47 0 2.79.51 3.83 1.5l2.87-2.87A9.64 9.64 0 0 0 12 2a10 10 0 0 0-8.96 5.51l3.35 2.62C7.18 7.76 9.39 6 12 6Z" />
+        </svg>
+        {mode === "login" ? "Log in with Google" : "Sign up with Google"}
       </button>
 
       <p className="text-center text-xs text-gray-500">

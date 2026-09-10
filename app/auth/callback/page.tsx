@@ -1,9 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { isSyncConfigured, supabase } from "@/lib/supabase/client";
+import { identifyAndSetUser, trackEvent } from "@/lib/analytics";
+import { consumeOAuthIntent, type OAuthIntent } from "@/lib/oauthIntent";
+import { requestSync } from "@/lib/sync";
 
 type CallbackState =
   | { status: "loading" }
@@ -29,17 +32,32 @@ function hadAuthTokenInUrl(): boolean {
 export default function AuthCallbackPage() {
   const router = useRouter();
   const [state, setState] = useState<CallbackState>({ status: "loading" });
+  const [oauthIntent, setOAuthIntent] = useState<OAuthIntent | null>(null);
+  const oauthIntentRef = useRef<OAuthIntent | null | undefined>(undefined);
 
   useEffect(() => {
     let active = true;
 
     async function verify() {
+      // Ref mempertahankan intent pada simulasi mount ulang React Strict Mode.
+      const intent = oauthIntentRef.current === undefined
+        ? consumeOAuthIntent()
+        : oauthIntentRef.current;
+      oauthIntentRef.current = intent;
+      if (active) setOAuthIntent(intent);
+
       // Error dari server (mis. otp_expired) tampil langsung — fragment error
       // tidak dibersihkan oleh SDK sehingga aman dibaca di sini.
       const hashParams = readHashParams();
       const urlError = hashParams.get("error");
       const errorDescription = hashParams.get("error_description");
       if (urlError) {
+        if (intent?.provider === "google") {
+          trackEvent(intent.action === "signup" ? "Registration Failed" : "Login Failed", {
+            [intent.action === "signup" ? "registration_method" : "login_method"]: "google",
+            failed_reason: "oauth_error",
+          });
+        }
         if (active) {
           setState({
             status: "error",
@@ -60,6 +78,19 @@ export default function AuthCallbackPage() {
       if (!active) return;
 
       if (data.session) {
+        identifyAndSetUser(data.session.user);
+        if (intent?.provider === "google") {
+          const createdAt = Date.parse(data.session.user.created_at);
+          const isNewUser = Number.isFinite(createdAt) && createdAt >= intent.startedAt - 60_000;
+          if (isNewUser) {
+            trackEvent("Registration Completed", {
+              registration_method: "google",
+              verification_required: false,
+            });
+          }
+          trackEvent("Login Completed", { login_method: "google" });
+        }
+        requestSync();
         setState({ status: "success" });
         window.setTimeout(() => router.replace("/"), 1200);
       } else if (hadAuthTokenInUrl()) {
@@ -88,7 +119,9 @@ export default function AuthCallbackPage() {
       {state.status === "loading" && (
         <>
           <div className="h-10 w-10 animate-spin rounded-full border-2 border-lime-400 border-t-transparent" />
-          <p className="text-gray-300">Memverifikasi email...</p>
+          <p className="text-gray-300">
+            {oauthIntent?.provider === "google" ? "Menghubungkan akun Google..." : "Memverifikasi email..."}
+          </p>
         </>
       )}
 
@@ -98,7 +131,7 @@ export default function AuthCallbackPage() {
             ✓
           </div>
           <p className="text-lg font-semibold text-gray-100">
-            Email berhasil diverifikasi!
+            {oauthIntent?.provider === "google" ? "Berhasil masuk dengan Google!" : "Email berhasil diverifikasi!"}
           </p>
           <p className="text-sm text-gray-400">
             Mengalihkan ke beranda...
