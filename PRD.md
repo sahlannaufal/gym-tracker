@@ -146,7 +146,7 @@ Aplikasi web sederhana (MVP) untuk mencatat dan memantau progres latihan beban (
 - Form menyimpan tanggal pengukuran, berat (kg), tinggi (cm), body fat (%) opsional, dan muscle mass (kg) opsional.
 - Setiap pengukuran disimpan sebagai histori; tinggi pengukuran terakhir menjadi prefill berikutnya. Pengguna dapat menghapus entri.
 - Summary terbaru menampilkan BMI, perubahan berat, estimasi massa lemak, persentase massa otot, dan insight sederhana berdasarkan perubahan dari pengukuran sebelumnya. Insight bukan diagnosis medis dan angka smart scale dianjurkan untuk dibaca sebagai tren.
-- Offline-first dengan cache LocalStorage per `user_id`, pending-delete, dan sinkronisasi dua arah last-write-wins melalui tabel Supabase `body_measurements` dengan RLS. Migration upgrade: `supabase/migrations/0002_body_measurements.sql`.
+- Offline-first dengan cache LocalStorage per `user_id`, pending-delete, dan sinkronisasi dua arah last-write-wins melalui tabel Supabase `body_measurements` dengan RLS. Tombstone penghapusan hanya dibersihkan setelah query verifikasi memastikan baris cloud benar-benar sudah tidak ada; kegagalan/RLS yang menghasilkan nol baris mempertahankan tombstone untuk retry dan mencegah data muncul kembali. Migration upgrade: `supabase/migrations/0002_body_measurements.sql`.
 
 ### F10. Google Analytics
 

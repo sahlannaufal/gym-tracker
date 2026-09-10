@@ -292,7 +292,7 @@ export default function AuthForm() {
           <path fill="#FBBC05" d="M6.39 13.87A6.02 6.02 0 0 1 6.07 12c0-.65.11-1.28.32-1.87V7.51H3.04A10 10 0 0 0 2 12c0 1.61.38 3.13 1.04 4.49l3.35-2.62Z" />
           <path fill="#EA4335" d="M12 6c1.47 0 2.79.51 3.83 1.5l2.87-2.87A9.64 9.64 0 0 0 12 2a10 10 0 0 0-8.96 5.51l3.35 2.62C7.18 7.76 9.39 6 12 6Z" />
         </svg>
-        {mode === "login" ? "Masuk dengan Google" : "Sign up with Google"}
+        {mode === "login" ? "Masuk dengan Google" : "Daftar dengan Google"}
       </button>
 
       <p className="text-center text-xs text-gray-500">

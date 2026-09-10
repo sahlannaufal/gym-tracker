@@ -140,6 +140,35 @@ function bodyMeasurementFromRow(row: BodyMeasurementRow): BodyMeasurement {
   };
 }
 
+/**
+ * Supabase dapat mengembalikan DELETE tanpa error tetapi tanpa baris terdampak
+ * (misalnya ketika RLS menolak target). Verifikasi keberadaan baris sebelum
+ * menghapus tombstone lokal agar data server tidak dapat muncul kembali.
+ */
+async function deleteBodyMeasurementFromCloud(
+  id: string,
+  userId: string,
+): Promise<boolean> {
+  if (!supabase) return false;
+
+  const { error: deleteError } = await supabase
+    .from("body_measurements")
+    .delete()
+    .eq("id", id)
+    .eq("user_id", userId);
+  if (deleteError) throw deleteError;
+
+  const { data: remaining, error: verifyError } = await supabase
+    .from("body_measurements")
+    .select("id")
+    .eq("id", id)
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (verifyError) throw verifyError;
+
+  return remaining === null;
+}
+
 async function getUserId(): Promise<string | null> {
   if (currentUserId) return currentUserId;
   if (!supabase) return null;
@@ -287,12 +316,11 @@ export async function syncAll(userId: string): Promise<void> {
 
     // 6. Riwayat komposisi tubuh — cache lokal dipisahkan per user.
     for (const id of loadBodyMeasurementDeletes(userId)) {
-      const { error: deleteError } = await supabase
-        .from("body_measurements")
-        .delete()
-        .eq("id", id)
-        .eq("user_id", userId);
-      if (!deleteError) removeBodyMeasurementDelete(userId, id);
+      const deleted = await deleteBodyMeasurementFromCloud(id, userId);
+      if (!deleted) {
+        throw new Error(`Pengukuran ${id} masih ada setelah proses hapus.`);
+      }
+      removeBodyMeasurementDelete(userId, id);
     }
     const bodyPending = new Set(loadBodyMeasurementDeletes(userId));
     const { data: bodyData, error: bodyError } = await supabase
