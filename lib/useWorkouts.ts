@@ -22,8 +22,11 @@ export function useWorkouts() {
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
-    setWorkouts(loadWorkouts());
+    const refresh = () => setWorkouts(loadWorkouts());
+    refresh();
     setIsLoaded(true);
+    window.addEventListener("workouts-changed", refresh);
+    return () => window.removeEventListener("workouts-changed", refresh);
   }, []);
 
   const addWorkout = useCallback((input: WorkoutInput, context: WorkoutTrackingContext = {}) => {

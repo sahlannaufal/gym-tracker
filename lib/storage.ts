@@ -13,6 +13,50 @@ import type {
 const STORAGE_KEY = "gym_tracker_workouts_v1";
 const STORE_VERSION = 1;
 const PENDING_DELETE_KEY = "gym_tracker_pending_delete_v1";
+const STORAGE_MIGRATION_OWNER_KEY = "gym_tracker_user_storage_owner_v1";
+
+let activeStorageUserId: string | null = null;
+
+function userStorageKey(baseKey: string, userId = activeStorageUserId): string | null {
+  return userId ? `${baseKey}_${userId}` : null;
+}
+
+/**
+ * Mengaktifkan namespace cache milik user. Data versi lama yang masih global
+ * diklaim satu kali oleh user pertama agar upgrade tidak menghilangkan data.
+ */
+export function setStorageUser(userId: string | null): void {
+  activeStorageUserId = userId;
+  if (!userId || typeof window === "undefined") return;
+
+  try {
+    const migrationOwner = localStorage.getItem(STORAGE_MIGRATION_OWNER_KEY);
+    if (!migrationOwner) {
+      const migratedLegacyKeys: string[] = [];
+      for (const baseKey of [
+        STORAGE_KEY,
+        PENDING_DELETE_KEY,
+        ROUTINE_KEY,
+        TRAINING_PROGRAM_KEY,
+      ]) {
+        const legacyValue = localStorage.getItem(baseKey);
+        const scopedKey = userStorageKey(baseKey, userId);
+        if (legacyValue !== null && scopedKey && localStorage.getItem(scopedKey) === null) {
+          localStorage.setItem(scopedKey, legacyValue);
+        }
+        if (legacyValue !== null) migratedLegacyKeys.push(baseKey);
+      }
+      // Tandai kepemilikan hanya setelah semua salinan berhasil ditulis.
+      localStorage.setItem(STORAGE_MIGRATION_OWNER_KEY, userId);
+      migratedLegacyKeys.forEach((baseKey) => localStorage.removeItem(baseKey));
+    }
+  } catch {
+    // Cache cloud tetap dapat dipulihkan bila LocalStorage tidak tersedia.
+  }
+
+  window.dispatchEvent(new Event("workouts-changed"));
+  window.dispatchEvent(new Event("training-programs-changed"));
+}
 
 const EMPTY_STORE: WorkoutStore = { version: STORE_VERSION, workouts: [] };
 
@@ -49,9 +93,11 @@ function normalizeStore(value: unknown): WorkoutStore {
   };
 }
 
-export function loadWorkouts(): Workout[] {
+export function loadWorkouts(userId?: string): Workout[] {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const key = userStorageKey(STORAGE_KEY, userId);
+    if (!key) return [];
+    const raw = localStorage.getItem(key);
     if (!raw) return [];
     return normalizeStore(JSON.parse(raw)).workouts;
   } catch {
@@ -59,9 +105,11 @@ export function loadWorkouts(): Workout[] {
   }
 }
 
-function persist(workouts: Workout[]): void {
+function persist(workouts: Workout[], userId?: string): void {
+  const key = userStorageKey(STORAGE_KEY, userId);
+  if (!key) return;
   const store: WorkoutStore = { version: STORE_VERSION, workouts };
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
+  localStorage.setItem(key, JSON.stringify(store));
 }
 
 export function saveWorkout(input: WorkoutInput): Workout {
@@ -99,15 +147,17 @@ export function deleteWorkout(id: string): void {
 }
 
 // Seluruh list diganti (dipakai hasil pull/merge sinkronisasi).
-export function replaceWorkouts(workouts: Workout[]): void {
-  persist(workouts);
+export function replaceWorkouts(workouts: Workout[], userId?: string): void {
+  persist(workouts, userId);
 }
 
 // --- Antrian delete saat offline (tombstone untuk sinkronisasi) ---
 
-export function loadPendingDeletes(): string[] {
+export function loadPendingDeletes(userId?: string): string[] {
   try {
-    const raw = localStorage.getItem(PENDING_DELETE_KEY);
+    const key = userStorageKey(PENDING_DELETE_KEY, userId);
+    if (!key) return [];
+    const raw = localStorage.getItem(key);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     return Array.isArray(parsed) ? parsed.filter((x) => typeof x === "string") : [];
@@ -116,9 +166,10 @@ export function loadPendingDeletes(): string[] {
   }
 }
 
-function persistPendingDeletes(ids: string[]): void {
+function persistPendingDeletes(ids: string[], userId?: string): void {
   try {
-    localStorage.setItem(PENDING_DELETE_KEY, JSON.stringify(ids));
+    const key = userStorageKey(PENDING_DELETE_KEY, userId);
+    if (key) localStorage.setItem(key, JSON.stringify(ids));
   } catch {
     /* localStorage penuh/tidak tersedia — abaikan */
   }
@@ -129,8 +180,8 @@ export function addPendingDelete(id: string): void {
   if (!list.includes(id)) persistPendingDeletes([...list, id]);
 }
 
-export function removePendingDelete(id: string): void {
-  persistPendingDeletes(loadPendingDeletes().filter((x) => x !== id));
+export function removePendingDelete(id: string, userId?: string): void {
+  persistPendingDeletes(loadPendingDeletes(userId).filter((x) => x !== id), userId);
 }
 
 const ROUTINE_KEY = "gym_tracker_routine_v1";
@@ -173,9 +224,11 @@ function normalizeRoutine(value: unknown): Routine {
   return { version: ROUTINE_VERSION, days, updatedAt };
 }
 
-export function loadRoutine(): Routine {
+export function loadRoutine(userId?: string): Routine {
   try {
-    const raw = localStorage.getItem(ROUTINE_KEY);
+    const key = userStorageKey(ROUTINE_KEY, userId);
+    if (!key) return emptyRoutine();
+    const raw = localStorage.getItem(key);
     if (!raw) return emptyRoutine();
     return normalizeRoutine(JSON.parse(raw));
   } catch {
@@ -184,12 +237,14 @@ export function loadRoutine(): Routine {
 }
 
 export function saveRoutine(routine: Routine): void {
+  const key = userStorageKey(ROUTINE_KEY);
+  if (!key) return;
   const payload: Record<string, unknown> = {
     version: ROUTINE_VERSION,
     days: routine.days,
   };
   if (routine.updatedAt) payload.updatedAt = routine.updatedAt;
-  localStorage.setItem(ROUTINE_KEY, JSON.stringify(payload));
+  localStorage.setItem(key, JSON.stringify(payload));
 }
 
 export function getDayExercises(day: Weekday, routine: Routine): string[] {
@@ -262,8 +317,8 @@ function normalizeTrainingProgramStore(value: unknown): TrainingProgramStore {
   };
 }
 
-function migrateLegacyRoutine(): TrainingProgramStore {
-  const routine = loadRoutine();
+function migrateLegacyRoutine(userId?: string): TrainingProgramStore {
+  const routine = loadRoutine(userId);
   const now = new Date().toISOString();
   const programs = DAY_ORDER.flatMap((day) => {
     const exercises = routine.days[day] ?? [];
@@ -285,21 +340,25 @@ function migrateLegacyRoutine(): TrainingProgramStore {
   };
 }
 
-export function loadTrainingProgramStore(): TrainingProgramStore {
+export function loadTrainingProgramStore(userId?: string): TrainingProgramStore {
   try {
-    const raw = localStorage.getItem(TRAINING_PROGRAM_KEY);
+    const key = userStorageKey(TRAINING_PROGRAM_KEY, userId);
+    if (!key) return emptyTrainingProgramStore();
+    const raw = localStorage.getItem(key);
     if (raw) return normalizeTrainingProgramStore(JSON.parse(raw));
-    const migrated = migrateLegacyRoutine();
-    localStorage.setItem(TRAINING_PROGRAM_KEY, JSON.stringify(migrated));
+    const migrated = migrateLegacyRoutine(userId);
+    localStorage.setItem(key, JSON.stringify(migrated));
     return migrated;
   } catch {
     return emptyTrainingProgramStore();
   }
 }
 
-export function saveTrainingProgramStore(store: TrainingProgramStore): void {
+export function saveTrainingProgramStore(store: TrainingProgramStore, userId?: string): void {
+  const key = userStorageKey(TRAINING_PROGRAM_KEY, userId);
+  if (!key) return;
   localStorage.setItem(
-    TRAINING_PROGRAM_KEY,
+    key,
     JSON.stringify({ ...store, version: TRAINING_PROGRAM_VERSION }),
   );
   window.dispatchEvent(new Event("training-programs-changed"));

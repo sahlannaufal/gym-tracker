@@ -16,6 +16,7 @@ const PAGE_NAMES: Record<string, string> = {
   "/auth/callback": "Konfirmasi Akun",
   "/auth/reset-password": "Buat Password Baru",
   "/~offline": "Offline",
+  "/aplikasi-tracking-gym": "Landing Page Marketing",
 };
 
 let appOpenedTracked = false;

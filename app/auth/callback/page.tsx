@@ -7,6 +7,7 @@ import { isSyncConfigured, supabase } from "@/lib/supabase/client";
 import { identifyAndSetUser, trackEvent } from "@/lib/analytics";
 import { consumeOAuthIntent, type OAuthIntent } from "@/lib/oauthIntent";
 import { requestSync } from "@/lib/sync";
+import { consumeMarketingAttribution } from "@/lib/marketingAttribution";
 
 type CallbackState =
   | { status: "loading" }
@@ -80,15 +81,17 @@ export default function AuthCallbackPage() {
       if (data.session) {
         identifyAndSetUser(data.session.user);
         if (intent?.provider === "google") {
+          const attribution = consumeMarketingAttribution();
           const createdAt = Date.parse(data.session.user.created_at);
           const isNewUser = Number.isFinite(createdAt) && createdAt >= intent.startedAt - 60_000;
           if (isNewUser) {
             trackEvent("Registration Completed", {
               registration_method: "google",
               verification_required: false,
+              ...attribution,
             });
           }
-          trackEvent("Login Completed", { login_method: "google" });
+          trackEvent("Login Completed", { login_method: "google", ...attribution });
         }
         requestSync();
         setState({ status: "success" });

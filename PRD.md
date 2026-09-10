@@ -97,8 +97,9 @@ Aplikasi web sederhana (MVP) untuk mencatat dan memantau progres latihan beban (
 
 ### F5. Penyimpanan LocalStorage
 
-- Key workout: `gym_tracker_workouts_v1`.
-- Key program latihan: `gym_tracker_training_programs_v1` (`gym_tracker_routine_v1` hanya dibaca untuk migrasi data lama).
+- Key workout per akun: `gym_tracker_workouts_v1_<user_id>`.
+- Key program latihan per akun: `gym_tracker_training_programs_v1_<user_id>` (`gym_tracker_routine_v1_<user_id>` hanya dibaca untuk migrasi data lama).
+- Tombstone penghapusan workout juga dipisahkan per akun melalui `gym_tracker_pending_delete_v1_<user_id>`. Data dari key global versi lama diklaim satu kali oleh akun pertama yang aktif, sehingga upgrade tidak mencampurkan data saat beberapa akun memakai browser yang sama.
 - Preferensi rest timer: `gym_tracker_rest_seconds_v1` (number, default 60) & `gym_tracker_rest_muted_v1` (boolean).
 - Struktur: array objek workout (lihat Data Model) + program latihan + jadwal per tanggal.
 - Tambahkan **versi data** agar mudah dimigrasi ke depannya.
@@ -160,7 +161,7 @@ Aplikasi web sederhana (MVP) untuk mencatat dan memantau progres latihan beban (
 - SDK browser dibungkus oleh `lib/analytics.ts`; komponen dan service aplikasi tidak memanggil SDK secara langsung.
 - Tracking hanya aktif jika build memakai `NODE_ENV=production`, `NEXT_PUBLIC_APP_ENV=production`, dan `NEXT_PUBLIC_MIXPANEL_TOKEN` tersedia. Development menampilkan preview via `console.debug`; staging/preview menjadi no-op.
 - Inisialisasi menggunakan persistence `localStorage`, `track_pageview: false`, dan `debug: false`. Route App Router dicatat oleh `components/MixpanelAnalytics.tsx` tanpa auto page-view SDK.
-- Event: `App Opened`, `Page Viewed`, `Registration Completed`, `Registration Failed`, `Login Completed`, `Login Failed`, `Logout Completed`, `Password Reset Requested`, `Password Reset Request Failed`, `Password Reset Completed`, `Password Reset Failed`, `Workout Logged`, `Workout Updated`, `Workout Deleted`, `Workout History Viewed`, `Progress Chart Viewed`, `Quick Log Used`, dan `Workout Sync Completed`. Registrasi berhasil menyimpan metode dan status kebutuhan verifikasi serta dihubungkan ke stable Supabase user ID jika tersedia; kegagalan registrasi/reset hanya menyimpan kategori penyebab tanpa alamat email.
+- Event: `App Opened`, `Page Viewed`, `Landing CTA Clicked`, `Registration Completed`, `Registration Failed`, `Login Completed`, `Login Failed`, `Logout Completed`, `Password Reset Requested`, `Password Reset Request Failed`, `Password Reset Completed`, `Password Reset Failed`, `Workout Logged`, `Workout Updated`, `Workout Deleted`, `Workout History Viewed`, `Progress Chart Viewed`, `Quick Log Used`, dan `Workout Sync Completed`. Registrasi berhasil menyimpan metode dan status kebutuhan verifikasi serta dihubungkan ke stable Supabase user ID jika tersedia; kegagalan registrasi/reset hanya menyimpan kategori penyebab tanpa alamat email.
 - Funnel instalasi PWA dicatat melalui `PWA Install Prompt Shown`, `PWA Install Clicked`, `PWA Install Accepted`, `PWA Install Dismissed`, dan `PWA Installed` pada browser yang mendukung install prompt. `PWA Opened` dicatat satu kali per app load ketika display mode `standalone` terdeteksi, termasuk sebagai konfirmasi penggunaan setelah Add to Home Screen pada iOS. Event terhubung ke stable user ID Mixpanel setelah autentikasi; profil user yang instalasinya terdeteksi diberi `pwa_installed` dan `pwa_last_installed_at`.
 - Session Supabase yang dipulihkan maupun login baru dihubungkan ke stable user ID. Profile menyimpan `$email` dari user terautentikasi serta `$name`/`role` hanya jika tersedia; email tidak dikirim pada event aktivitas.
 - Logout mencatat `Logout Completed` sebelum identitas Mixpanel di-reset. Error analytics selalu diabaikan agar alur utama tetap berjalan.
@@ -181,10 +182,17 @@ Aplikasi web sederhana (MVP) untuk mencatat dan memantau progres latihan beban (
 - Animasi 180×180 tidak dibundel ke aplikasi. GIF dimuat dari CDN ExerciseDB hanya setelah modal dibuka; kegagalan jaringan menampilkan pesan yang jelas tanpa mengganggu detail teks tutorial.
 - Tutorial tidak mengubah model `Workout`, program latihan, LocalStorage, atau skema sinkronisasi Supabase.
 
+### F13. Landing Page Marketing
+
+- Landing page publik tersedia terpisah di `/aplikasi-tracking-gym`; route `/` tetap menjadi dashboard sehingga routing aplikasi yang sudah ada tidak berubah.
+- Halaman marketing dirender sebagai konten server yang dapat diindeks, memakai metadata unik, canonical production, Open Graph, serta structured data `SoftwareApplication` tanpa rating/review buatan. Route dicantumkan sebagai prioritas utama di `/sitemap.xml` dan sitemap diumumkan melalui `/robots.txt`.
+- Route marketing tidak menampilkan bottom navigation, FAB, atau install prompt aplikasi. CTA mengarah ke `/login`; autentikasi dan seluruh halaman data pengguna tetap berada di balik auth gate.
+- Setiap CTA marketing dicatat sebagai `Landing CTA Clicked` dengan nama, tujuan, dan status apakah menuju autentikasi. CTA autentikasi menyimpan attribution first-party maksimal dua jam; `Registration Completed`/`Login Completed` berikutnya membawa `entry_source: landing_page` dan `landing_cta`, sehingga funnel landing → CTA → autentikasi dapat dianalisis tanpa menyimpan data pribadi di event CTA.
+
 ## 7. Data Model
 
 ```json
-// localStorage["gym_tracker_workouts_v1"]
+// localStorage["gym_tracker_workouts_v1_<user_id>"]
 {
   "version": 1,
   "workouts": [
@@ -212,7 +220,7 @@ Riwayat komposisi tubuh menggunakan model `BodyMeasurement`: `id`, `weightKg`, `
 > **Sinkronisasi:** workout direpresentasikan di tabel `workouts`. Program dan jadwal tanggal disimpan pada kolom JSONB tabel `routine` (migration `0003_training_programs.sql`). Kolom `updated_at`/`program_updated_at` di DB ↔ `updatedAt` di client.
 
 ```json
-// localStorage["gym_tracker_training_programs_v1"]
+// localStorage["gym_tracker_training_programs_v1_<user_id>"]
 {
   "version": 1,
   "programs": [

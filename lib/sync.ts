@@ -6,6 +6,7 @@ import {
   removePendingDelete,
   replaceWorkouts,
   saveTrainingProgramStore,
+  setStorageUser,
 } from "./storage";
 import type { TrainingProgramStore, Workout } from "./types";
 import type { BodyMeasurement } from "./types";
@@ -57,6 +58,7 @@ let currentUserId: string | null = null;
 
 export function setSyncUser(id: string | null): void {
   currentUserId = id;
+  setStorageUser(id);
 }
 
 type WorkoutRow = {
@@ -204,18 +206,18 @@ export async function syncAll(userId: string): Promise<void> {
   setStatus({ state: "syncing" });
   try {
     // 1. Proses hapus yang tertunda saat offline
-    for (const id of loadPendingDeletes()) {
+    for (const id of loadPendingDeletes(userId)) {
       const { error } = await supabase
         .from("workouts")
         .delete()
         .eq("id", id)
         .eq("user_id", userId);
       if (!error) {
-        removePendingDelete(id);
+        removePendingDelete(id, userId);
         syncedWorkoutCount += 1;
       }
     }
-    const pending = new Set(loadPendingDeletes());
+    const pending = new Set(loadPendingDeletes(userId));
 
     // 2. Pull server
     const { data, error } = await supabase
@@ -226,7 +228,7 @@ export async function syncAll(userId: string): Promise<void> {
     const serverRows = (data ?? []) as WorkoutRow[];
 
     // 3. Merge last-write-wins
-    const local = loadWorkouts();
+    const local = loadWorkouts(userId);
     const serverMap = new Map(serverRows.map((r) => [r.id, r]));
     const merged = new Map<string, Workout>();
     const toUpsert: Workout[] = [];
@@ -263,8 +265,8 @@ export async function syncAll(userId: string): Promise<void> {
     // tombstone terbaru. Item yang disimpan selama sync dipertahankan; item
     // yang dihapus selama sync (tombstone baru belum diproses) dibuang dari
     // hasil merge agar tidak tertulis kembali (dan tidak ter-upload ulang).
-    const latestLocal = loadWorkouts();
-    const latestPending = new Set(loadPendingDeletes());
+    const latestLocal = loadWorkouts(userId);
+    const latestPending = new Set(loadPendingDeletes(userId));
     for (const id of [...merged.keys()]) {
       if (latestPending.has(id)) merged.delete(id);
     }
@@ -273,7 +275,7 @@ export async function syncAll(userId: string): Promise<void> {
         merged.set(w.id, w);
       }
     }
-    replaceWorkouts([...merged.values()]);
+    replaceWorkouts([...merged.values()], userId);
 
     // 5. Program latihan + pilihan per tanggal (satu dokumen per user).
     const { data: routineRow, error: routinePullErr } = await supabase
@@ -283,7 +285,7 @@ export async function syncAll(userId: string): Promise<void> {
       .maybeSingle();
     if (routinePullErr) throw routinePullErr;
 
-    const localPrograms = loadTrainingProgramStore();
+    const localPrograms = loadTrainingProgramStore(userId);
     const localHasContent = localPrograms.programs.length > 0 || Object.keys(localPrograms.schedule).length > 0;
     const serverPrograms = (routineRow?.programs ?? []) as TrainingProgramStore["programs"];
     const serverSchedule = (routineRow?.schedule ?? {}) as TrainingProgramStore["schedule"];
@@ -311,7 +313,7 @@ export async function syncAll(userId: string): Promise<void> {
         programs: serverPrograms,
         schedule: serverSchedule,
         updatedAt: serverUpdatedAt,
-      });
+      }, userId);
     }
 
     // 6. Riwayat komposisi tubuh — cache lokal dipisahkan per user.

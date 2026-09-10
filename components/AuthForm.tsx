@@ -7,6 +7,7 @@ import { isSyncConfigured, supabase } from "@/lib/supabase/client";
 import { requestSync } from "@/lib/sync";
 import { identifyAndSetUser, trackEvent } from "@/lib/analytics";
 import { consumeOAuthIntent, saveOAuthIntent } from "@/lib/oauthIntent";
+import { consumeMarketingAttribution } from "@/lib/marketingAttribution";
 import PasswordInput from "./PasswordInput";
 
 function normalizeLoginFailure(error: unknown): string {
@@ -83,6 +84,7 @@ export default function AuthForm() {
         // Supabase dapat mengembalikan user tersamarkan tanpa identities untuk
         // email yang sudah terdaftar agar status akun tidak bocor ke UI.
         const existingAccount = data.user?.identities?.length === 0;
+        const attribution = existingAccount ? {} : consumeMarketingAttribution();
         if (existingAccount) {
           trackEvent("Registration Failed", {
             registration_method: "email_password",
@@ -93,6 +95,7 @@ export default function AuthForm() {
           trackEvent("Registration Completed", {
             registration_method: "email_password",
             verification_required: !data.session,
+            ...attribution,
           });
         }
 
@@ -100,7 +103,7 @@ export default function AuthForm() {
         // langsung login tanpa perlu membuka link verifikasi.
         if (data.session) {
           identifyAndSetUser(data.session.user);
-          trackEvent("Login Completed", { login_method: "email_password" });
+          trackEvent("Login Completed", { login_method: "email_password", ...attribution });
           requestSync();
           router.replace("/");
           return;
@@ -116,8 +119,9 @@ export default function AuthForm() {
           password,
         });
         if (error) throw error;
+        const attribution = consumeMarketingAttribution();
         identifyAndSetUser(data.user);
-        trackEvent("Login Completed", { login_method: "email_password" });
+        trackEvent("Login Completed", { login_method: "email_password", ...attribution });
         requestSync();
         router.replace("/");
       }

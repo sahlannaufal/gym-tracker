@@ -10,6 +10,7 @@ const PUBLIC_PATHS = new Set([
   "/auth/callback",
   "/auth/reset-password",
   "/~offline",
+  "/aplikasi-tracking-gym",
 ]);
 
 export default function AuthGate({ children }: { children: React.ReactNode }) {
