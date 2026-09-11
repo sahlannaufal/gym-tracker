@@ -299,9 +299,6 @@ export default function AuthForm() {
         {mode === "login" ? "Masuk dengan Google" : "Daftar dengan Google"}
       </button>
 
-      <p className="text-center text-xs text-gray-500">
-        Masuk untuk mengakses dan menyinkronkan data latihanmu.
-      </p>
     </form>
   );
 }
