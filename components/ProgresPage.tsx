@@ -7,7 +7,7 @@ import Progress from "./Progress";
 type Tab = "riwayat" | "grafik";
 
 export default function ProgresPage() {
-  const [tab, setTab] = useState<Tab>("riwayat");
+  const [tab, setTab] = useState<Tab>("grafik");
 
   const segClass = (active: boolean) =>
     `flex-1 rounded-lg py-2 text-sm font-semibold transition-colors ${
@@ -21,21 +21,21 @@ export default function ProgresPage() {
       <div className="flex rounded-xl border border-gray-800 bg-gray-900/50 p-1">
         <button
           type="button"
-          onClick={() => setTab("riwayat")}
-          className={segClass(tab === "riwayat")}
-        >
-          Riwayat
-        </button>
-        <button
-          type="button"
           onClick={() => setTab("grafik")}
           className={segClass(tab === "grafik")}
         >
           Grafik
         </button>
+        <button
+          type="button"
+          onClick={() => setTab("riwayat")}
+          className={segClass(tab === "riwayat")}
+        >
+          Riwayat
+        </button>
       </div>
 
-      {tab === "riwayat" ? <History /> : <Progress />}
+      {tab === "grafik" ? <Progress /> : <History />}
     </section>
   );
 }

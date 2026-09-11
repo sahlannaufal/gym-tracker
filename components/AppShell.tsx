@@ -4,13 +4,15 @@ import { usePathname } from "next/navigation";
 import BottomNav from "./BottomNav";
 import InstallPrompt from "./InstallPrompt";
 
-const MARKETING_PATHS = new Set(["/aplikasi-tracking-gym"]);
+function isMarketingPath(pathname: string): boolean {
+  return pathname === "/aplikasi-tracking-gym" || pathname === "/blog" || pathname.startsWith("/blog/");
+}
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
-  if (MARKETING_PATHS.has(pathname)) {
-    return <main className="min-h-screen">{children}</main>;
+  if (isMarketingPath(pathname)) {
+    return <div className="min-h-screen">{children}</div>;
   }
 
   return (

@@ -16,6 +16,7 @@
     "mixpanel-browser": "^2.82.0",
     "next": "^16.3.4",
     "react": "^19.1.0",
+    "react-body-highlighter": "^2.0.5",
     "react-dom": "^19.1.0"
   },
   "devDependencies": {

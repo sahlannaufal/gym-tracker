@@ -18,11 +18,11 @@ function Summary({
   value: string | number;
 }) {
   return (
-    <div className="rounded-2xl border border-gray-800 bg-gray-900/50 p-4">
-      <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
+    <div className="rounded-xl border border-gray-800 bg-gray-900/50 p-3">
+      <p className="text-[10px] font-medium uppercase tracking-wide text-gray-500">
         {label}
       </p>
-      <p className="mt-1 text-lg font-bold text-gray-100">{value}</p>
+      <p className="mt-1 text-sm font-bold text-gray-100">{value}</p>
     </div>
   );
 }
@@ -116,14 +116,9 @@ export default function Progress() {
       <h1 className="text-2xl font-bold">Grafik Progress</h1>
 
       <div className="max-w-xs">
-        <label
-          htmlFor="exerciseSelect"
-          className="mb-1.5 block text-sm font-medium text-gray-300"
-        >
-          Pilih Latihan
-        </label>
         <select
           id="exerciseSelect"
+          aria-label="Pilih latihan untuk grafik"
           value={selected ?? ""}
           onChange={(e) => setSelected(e.target.value)}
           className="w-full rounded-xl border border-gray-700 bg-gray-900 px-4 py-2.5 text-gray-100 focus:border-lime-400 focus:outline-none focus:ring-1 focus:ring-lime-400"
@@ -147,9 +142,6 @@ export default function Progress() {
 
       {current && (
         <div className="rounded-2xl border border-gray-800 bg-gray-900/50 p-4">
-          <p className="mb-2 text-sm font-medium text-gray-300">
-            {current} - beban maksimum per sesi
-          </p>
           <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img">
             {gridlines.map((v) => (
               <g key={v}>
@@ -202,11 +194,14 @@ export default function Progress() {
               Tambahkan lebih banyak sesi untuk melihat tren beban.
             </p>
           )}
+          <p className="mt-3 text-center text-xs text-gray-500">
+            Grafik menampilkan beban maksimum per sesi.
+          </p>
         </div>
       )}
 
       {current && (
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-3 gap-2">
           <Summary label="Max Beban" value={`${maxWeight} kg`} />
           <Summary label="Total Volume" value={`${Math.round(totalVolume)} kg`} />
           <Summary label="Total Sesi" value={filtered.length} />

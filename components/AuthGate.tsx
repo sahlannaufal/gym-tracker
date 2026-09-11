@@ -17,7 +17,11 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const { user, loading } = useAuth();
-  const isPublicPath = PUBLIC_PATHS.has(pathname);
+  const isIndexablePublicPath =
+    pathname === "/aplikasi-tracking-gym" ||
+    pathname === "/blog" ||
+    pathname.startsWith("/blog/");
+  const isPublicPath = PUBLIC_PATHS.has(pathname) || isIndexablePublicPath;
   const redirectTo =
     !loading && user && pathname === "/login"
       ? "/"
@@ -28,6 +32,10 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (redirectTo) router.replace(redirectTo);
   }, [redirectTo, router]);
+
+  // Konten marketing harus langsung tersedia pada HTML awal untuk crawler;
+  // route ini tidak membaca data user dan tidak perlu menunggu pemulihan sesi.
+  if (isIndexablePublicPath) return children;
 
   // Callback harus segera dirender agar Supabase dapat memproses token URL.
   if (

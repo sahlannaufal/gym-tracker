@@ -84,9 +84,14 @@ export default function MarketingPage() {
             </span>
             Abadikan Gym
           </Link>
-          <TrackedMarketingLink href="/login" ctaName="header_login" leadsToAuth className="rounded-xl border border-gray-700 px-4 py-2 text-sm font-semibold hover:border-gray-500">
-            Masuk
-          </TrackedMarketingLink>
+          <div className="flex items-center gap-4">
+            <Link href="/blog" className="text-sm font-semibold text-gray-300 hover:text-lime-400">
+              Blog
+            </Link>
+            <TrackedMarketingLink href="/login" ctaName="header_login" leadsToAuth className="rounded-xl border border-gray-700 px-4 py-2 text-sm font-semibold hover:border-gray-500">
+              Masuk
+            </TrackedMarketingLink>
+          </div>
         </div>
       </header>
 
@@ -159,6 +164,7 @@ export default function MarketingPage() {
       </section>
 
       <footer className="border-t border-gray-800 px-5 py-8 text-center text-sm text-gray-500 sm:px-8">
+        <Link href="/blog" className="mb-3 inline-block text-gray-300 hover:text-lime-400">Baca Blog</Link>
         <p>© {new Date().getFullYear()} Abadikan Gym. Catat dan pantau progres latihanmu.</p>
       </footer>
     </div>

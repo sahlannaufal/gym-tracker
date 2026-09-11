@@ -379,13 +379,12 @@ export default function TodayWorkout({
             <option value="">Belum dipilih</option>
             <option value="__rest__">Rest Day</option>
             {store.programs.map((program) => (
-              <option key={program.id} value={program.id}>{program.name}</option>
+              <option key={program.id} value={program.id}>
+                {program.name} · {program.exercises.length} latihan
+              </option>
             ))}
           </select>
         </label>
-        {selectedProgram && (
-          <p className="mt-2 text-sm text-lime-400">{selectedProgram.exercises.length} latihan</p>
-        )}
       </div>
 
       {!assignment ? (

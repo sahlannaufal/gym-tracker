@@ -94,7 +94,7 @@ function Tracker({ appVersion }: { appVersion: string }) {
     if (lastPageRef.current === pagePath) return;
 
     trackEvent("Page Viewed", {
-      page_name: PAGE_NAMES[pathname] ?? pathname,
+      page_name: pathname === "/blog" ? "Blog" : pathname.startsWith("/blog/") ? "Artikel Blog" : PAGE_NAMES[pathname] ?? pathname,
       page_path: pagePath,
       previous_page: previousPageRef.current,
       is_authenticated: authenticatedRef.current,

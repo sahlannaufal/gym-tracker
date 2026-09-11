@@ -143,6 +143,17 @@ function ProgramForm({
 export default function RoutineEditor() {
   const { store, addProgram, updateProgram, deleteProgram } = useTrainingPrograms();
   const [editingId, setEditingId] = useState<string | "new" | null>(null);
+  const [expandedProgramIds, setExpandedProgramIds] = useState<Set<string>>(new Set());
+  const [tutorialExercise, setTutorialExercise] = useState<string>();
+
+  const toggleProgram = (programId: string) => {
+    setExpandedProgramIds((current) => {
+      const next = new Set(current);
+      if (next.has(programId)) next.delete(programId);
+      else next.add(programId);
+      return next;
+    });
+  };
 
   useEffect(() => {
     if (editingId && editingId !== "new" && !store?.programs.some((item) => item.id === editingId)) setEditingId(null);
@@ -154,10 +165,7 @@ export default function RoutineEditor() {
   return (
     <section className="space-y-5">
       <div className="flex items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold">Program Latihan</h1>
-          <p className="mt-1 text-sm text-gray-400">Buat paket latihan yang dapat dipilih untuk tanggal mana pun.</p>
-        </div>
+        <h1 className="text-2xl font-bold">Program Latihan</h1>
         {!editingId && <button type="button" onClick={() => setEditingId("new")} className="shrink-0 rounded-xl bg-lime-400 px-4 py-2.5 text-sm font-semibold text-gray-950 hover:bg-lime-300">+ Program</button>}
       </div>
 
@@ -178,20 +186,64 @@ export default function RoutineEditor() {
         <div className="rounded-2xl border border-dashed border-gray-700 p-8 text-center text-gray-400">Belum ada program latihan.</div>
       ) : (
         <ul className="space-y-3">
-          {store.programs.map((program) => (
+          {store.programs.map((program) => {
+            const expanded = expandedProgramIds.has(program.id);
+            return (
             <li key={program.id} className="rounded-2xl border border-gray-800 bg-gray-900/50 p-4">
-              <div className="flex items-start justify-between gap-3">
-                <div><h2 className="font-semibold text-gray-100">{program.name}</h2><p className="mt-1 text-sm text-gray-500">{program.exercises.length} latihan</p></div>
-                <div className="flex gap-2">
+              <div className="flex items-center gap-2">
+                <button type="button" onClick={() => toggleProgram(program.id)} aria-expanded={expanded} className="min-w-0 flex-1 text-left">
+                  <h2 className="truncate font-semibold text-gray-100">{program.name}</h2>
+                  <p className="mt-1 text-sm text-gray-500">{program.exercises.length} latihan</p>
+                </button>
+                <div className="flex shrink-0 gap-2">
                   <button type="button" onClick={() => setEditingId(program.id)} className="rounded-lg border border-gray-700 px-3 py-1.5 text-sm text-gray-300 hover:bg-gray-800">Edit</button>
                   <button type="button" onClick={() => { if (window.confirm(`Hapus program ${program.name}? Jadwal yang memakainya akan dilepas.`)) deleteProgram(program.id); }} className="rounded-lg border border-red-900/70 px-3 py-1.5 text-sm text-red-400 hover:bg-red-950/50">Hapus</button>
                 </div>
+                <button
+                  type="button"
+                  onClick={() => toggleProgram(program.id)}
+                  aria-expanded={expanded}
+                  aria-label={`${expanded ? "Tutup" : "Buka"} daftar latihan ${program.name}`}
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-gray-700 text-gray-400"
+                >
+                  <svg className={`h-4 w-4 transition-transform ${expanded ? "rotate-180" : ""}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="m6 9 6 6 6-6" />
+                  </svg>
+                </button>
               </div>
-              <p className="mt-3 text-sm text-gray-300">{program.exercises.join(" · ")}</p>
+
+              {expanded && (
+                <ul className="mt-4 space-y-2 border-t border-gray-800 pt-4">
+                  {program.exercises.map((exercise, index) => (
+                    <li key={exercise} className="flex items-center justify-between gap-2 rounded-xl bg-gray-950/60 px-3 py-2 text-sm">
+                      <span className="min-w-0 flex-1 truncate text-gray-300">
+                        <span className="mr-2 text-gray-600">{index + 1}.</span>
+                        {exercise}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setTutorialExercise(exercise)}
+                        aria-label={`Buka tutorial ${exercise}`}
+                        className="flex h-8 shrink-0 items-center gap-1 rounded-lg px-2 text-xs font-semibold text-lime-400 hover:bg-lime-400/10"
+                      >
+                        <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                          <path d="M8 5v14l11-7z" />
+                        </svg>
+                        Tutorial
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </li>
-          ))}
+            );
+          })}
         </ul>
       )}
+      <ExerciseTutorialModal
+        exercise={tutorialExercise}
+        onClose={() => setTutorialExercise(undefined)}
+      />
     </section>
   );
 }

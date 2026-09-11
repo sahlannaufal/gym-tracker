@@ -1,3 +1,6 @@
+"use client";
+
+import { useLayoutEffect, useRef } from "react";
 import type { Workout } from "@/lib/types";
 
 const WEEK_COUNT = 52;
@@ -40,6 +43,14 @@ function intensityClass(totalSets: number): string {
 }
 
 export default function ActivityHeatmap({ workouts }: { workouts: Workout[] }) {
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  useLayoutEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    container.scrollLeft = container.scrollWidth - container.clientWidth;
+  }, []);
+
   const today = new Date();
   const currentWeekStart = startOfWeek(today);
   const rangeStart = addDays(currentWeekStart, -(WEEK_COUNT - 1) * 7);
@@ -84,6 +95,7 @@ export default function ActivityHeatmap({ workouts }: { workouts: Workout[] }) {
       </div>
 
       <div
+        ref={scrollContainerRef}
         className="mt-5 overflow-x-auto pb-2"
         role="img"
         aria-label={`${activeWeeks} dari 52 minggu aktif`}

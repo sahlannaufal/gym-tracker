@@ -59,11 +59,12 @@ Aplikasi web sederhana (MVP) untuk mencatat dan memantau progres latihan beban (
 - Menampilkan ringkasan cepat:
   - Jumlah sesi minggu ini berdasarkan tanggal latihan unik (tanggal mendatang tidak dihitung).
   - Total set minggu ini.
-  - Personal Best sepanjang waktu: beban tertinggi, dengan repetisi tertinggi dan tanggal terbaru sebagai tie-breaker.
-  - Otot terakhir dilatih dari seluruh workout pada tanggal aktual terbaru: primary muscles diprioritaskan, diikuti secondary muscles, maksimal tiga nama + jumlah sisanya; dilengkapi jumlah latihan unik dan total set.
-- Menampilkan tombol aksi utama **"Tambah Latihan"**.
+  - Otot terakhir dilatih dari seluruh workout pada tanggal aktual terbaru: diagram anatomi depan/belakang dari `react-body-highlighter` menyorot otot utama dengan hijau terang dan otot pendukung dengan hijau gelap. Badge tekstual tetap ditampilkan sebagai keterangan/fallback; ringkasan jumlah latihan/set dan kartu Personal Best tidak ditampilkan.
+- Kartu **Sesi Minggu Ini** dan **Set Minggu Ini** memakai tampilan ringkas dengan padding, label, angka, dan jarak antarkartu yang lebih kecil.
+- Dashboard tidak menampilkan tombol **"Tambah Latihan"**; akses pencatatan tetap tersedia melalui FAB navigasi bawah.
+- Kartu **Latihan Hari Ini** tampil dalam satu baris. Saat program belum dipilih kartu hanya menampilkan label dan tombol **Pilih Program**; setelah dipilih kartu menampilkan nama program tanpa jumlah latihan.
 - Dashboard otomatis ter-refresh saat data berubah.
-- Menampilkan heatmap **Aktivitas 12 Bulan Terakhir** bergaya contribution graph GitHub: 52 kolom minggu × 7 baris hari tanpa interaksi per kotak. Nama bulan berada di atas kelompok minggu dan grid dapat digeser horizontal pada layar sempit. Intensitas warna dihitung dari total set harian (0, 1–3, 4–6, 7–10, dan >10 set), dilengkapi jumlah minggu aktif tanpa skor persentase konsistensi.
+- Menampilkan heatmap **Aktivitas 12 Bulan Terakhir** bergaya contribution graph GitHub: 52 kolom minggu × 7 baris hari tanpa interaksi per kotak. Nama bulan berada di atas kelompok minggu dan grid dapat digeser horizontal pada layar sempit; posisi awal scroll otomatis berada di ujung kanan agar bulan serta minggu terbaru langsung terlihat. Intensitas warna dihitung dari total set harian (0, 1–3, 4–6, 7–10, dan >10 set), dilengkapi jumlah minggu aktif tanpa skor persentase konsistensi.
 - Metadata `primaryMuscles`/`secondaryMuscles` untuk latihan bawaan disimpan statis di `lib/constants/exerciseMuscles.ts`, terpisah dari model workout agar offline-ready dan tidak memerlukan migrasi storage/database. Latihan custom menggunakan fallback `Lainnya`.
 
 ### F2. Form Pencatatan Workout
@@ -80,7 +81,7 @@ Aplikasi web sederhana (MVP) untuk mencatat dan memantau progres latihan beban (
 
 ### F3. Halaman Histori / Log Latihan
 
-- Bagian "Riwayat" dari halaman **Progres** (`/progress`, segmented control dengan "Grafik").
+- Bagian "Riwayat" dari halaman **Progres** (`/progress`, tab kedua setelah "Grafik").
 - Menampilkan seluruh entri workout terurut tanggal **descending** (terbaru di atas).
 - Filter per nama latihan (dropdown "Pilih Latihan", default "Semua Latihan").
 - Filter rentang tanggal ("Dari" & "Sampai", keduanya opsional, string `YYYY-MM-DD`); berlaku bersamaan dengan filter latihan. Rentang tidak valid (Dari > Sampai) menampilkan pesan peringatan.
@@ -90,10 +91,12 @@ Aplikasi web sederhana (MVP) untuk mencatat dan memantau progres latihan beban (
 
 ### F4. Grafik Progress Beban
 
-- Bagian "Grafik" dari halaman **Progres** (`/progress`, segmented control dengan "Riwayat").
+- Bagian "Grafik" dari halaman **Progres** (`/progress`) menjadi tab pertama dan tampilan default, diikuti tab "Riwayat". View tetap menampilkan judul "Grafik Progress", sedangkan label visual "Pilih Latihan" di atas dropdown dihilangkan; nama aksesibel tetap tersedia melalui `aria-label`.
 - Line chart sederhana: sumbu X = tanggal, sumbu Y = beban (kg).
 - Dapat dipilih per nama latihan (dropdown "Pilih Latihan"); grafik kosong sebelum memilih latihan.
 - Data yang diplot: beban maksimum per tanggal untuk latihan terpilih (jika ada beberapa set dalam sehari, pakai nilai terbesar).
+- Nama latihan tidak diulang di dalam kartu grafik karena sudah terlihat pada dropdown; keterangan "Beban maksimum per sesi" ditempatkan sebagai informasi di bawah grafik.
+- Setelah latihan dipilih, ringkasan Max Beban, Total Volume, dan Total Sesi ditampilkan sebagai tiga kartu ringkas berukuran kecil.
 - Tidak memerlukan library berat; boleh pakai chart library ringan (Chart.js / Recharts) atau SVG custom sesuai kebutuhan.
 
 ### F5. Penyimpanan LocalStorage
@@ -109,12 +112,13 @@ Aplikasi web sederhana (MVP) untuk mencatat dan memantau progres latihan beban (
 ### F6. Program Latihan & Jadwal Per Tanggal
 
 - Pengguna dapat membuat beberapa **program latihan reusable** dengan nama bebas dan daftar latihan dari `EXERCISE_CATEGORIES` atau nama custom. Program dapat dibuat, diedit, dan dihapus.
+- Daftar program tidak menampilkan seluruh nama latihan secara inline. Setiap card dapat dibuka melalui tombol panah untuk menampilkan list latihan bernomor; setiap latihan pada list menyediakan tombol **Tutorial**. Subjudul penjelasan paket latihan tidak ditampilkan.
 - Editor **Program** tersedia sebagai view kedua di `/today` (`?view=program`). Route lama `/routine` dipertahankan sebagai redirect kompatibilitas ke view Program.
 - Halaman **"Latihan Hari Ini"** (`/today`) langsung memakai tanggal lokal hari ini tanpa date picker. Pengguna memilih satu program untuk hari ini, memilih **Rest Day**, atau membiarkannya belum dipilih. Tidak ada jadwal mingguan/default otomatis pada versi ini.
-- Pemilihan program tetap disimpan dengan key tanggal hari ini (`YYYY-MM-DD`). Mengganti pilihan tidak mengubah isi program atau histori workout yang sudah tercatat. Ringkasan pilihan menampilkan jumlah latihan tanpa mengulang nama program yang sudah terlihat pada dropdown.
+- Pemilihan program tetap disimpan dengan key tanggal hari ini (`YYYY-MM-DD`). Mengganti pilihan tidak mengubah isi program atau histori workout yang sudah tercatat. Nama dan jumlah latihan ditampilkan langsung di dalam opsi selector (mis. `Pull Day · 6 latihan`), tanpa teks ringkasan tambahan di bawah selector.
 - Setelah program dipilih, daftar latihannya tampil untuk hari ini. Saat kartu latihan dibuka, form pencatatan set tampil langsung secara inline: tiap baris berisi beban (kg) dan repetisi, data sesi terakhir menjadi prefill awal, serta tombol **"Tambah Set"** membuat dan langsung menyimpan baris baru dengan nilai dari baris sebelumnya. Perubahan nilai disimpan otomatis saat input selesai diedit; tidak ada tombol simpan terpisah.
 - Tiap latihan di list menampilkan **badge jumlah set** hari ini. Baris pada form inline sekaligus merepresentasikan histori set hari ini; ikon **×** menghapus workout tersimpan beserta tombstone sinkronisasinya.
-- Dashboard menampilkan kartu ringkas "Latihan Hari Ini" berupa nama program + jumlah latihan, Rest Day, atau status belum memilih, dengan tombol menuju `/today`.
+- Dashboard menampilkan kartu ringkas "Latihan Hari Ini" berupa nama program, Rest Day, atau hanya label saat belum memilih, dengan tombol menuju `/today`.
 - Empty state hari yang belum dipilih menampilkan link ke editor Program; Rest Day memiliki state khusus.
 - Migrasi lokal satu kali mengubah setiap hari pada rutin lama yang tidak kosong menjadi program bernama `Rutin <Nama Hari>` tanpa menjadwalkannya otomatis ke tanggal tertentu.
 
@@ -147,7 +151,8 @@ Aplikasi web sederhana (MVP) untuk mencatat dan memantau progres latihan beban (
 - Tersedia di halaman **Profil** hanya setelah pengguna login.
 - Form menyimpan tanggal pengukuran, berat (kg), tinggi (cm), body fat (%) opsional, dan muscle mass (kg) opsional.
 - Setiap pengukuran disimpan sebagai histori; tinggi pengukuran terakhir menjadi prefill berikutnya. Pengguna dapat menghapus entri.
-- Summary terbaru menampilkan BMI, perubahan berat, estimasi massa lemak, persentase massa otot, dan insight sederhana berdasarkan perubahan dari pengukuran sebelumnya. Insight bukan diagnosis medis dan angka smart scale dianjurkan untuk dibaca sebagai tren.
+- Summary terbaru menampilkan BMI, perubahan berat, estimasi massa lemak, dan persentase massa otot. Bagian Insight serta catatan penjelasan BMI/body composition tidak ditampilkan.
+- Card Komposisi Tubuh berisi form dan ringkasan pengukuran terbaru; daftar Riwayat ditempatkan pada card terpisah di bawahnya.
 - Offline-first dengan cache LocalStorage per `user_id`, pending-delete, dan sinkronisasi dua arah last-write-wins melalui tabel Supabase `body_measurements` dengan RLS. Tombstone penghapusan hanya dibersihkan setelah query verifikasi memastikan baris cloud benar-benar sudah tidak ada; kegagalan/RLS yang menghasilkan nol baris mempertahankan tombstone untuk retry dan mencegah data muncul kembali. Migration upgrade: `supabase/migrations/0002_body_measurements.sql`.
 
 ### F10. Google Analytics
@@ -195,6 +200,13 @@ Aplikasi web sederhana (MVP) untuk mencatat dan memantau progres latihan beban (
 - Seluruh route mengirim `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy`, `X-Frame-Options`, `Cross-Origin-Opener-Policy`, dan HSTS. Header identifikasi framework `X-Powered-By` dinonaktifkan.
 - Content Security Policy diterapkan lebih dahulu sebagai `Content-Security-Policy-Report-Only`, sehingga pelanggaran dilaporkan di console browser tetapi tidak memblokir fitur pengguna. Sumber eksternal dibatasi pada integrasi aplikasi: Supabase, Google Analytics/Tag Manager, Mixpanel, Google Accounts, dan CDN GIF ExerciseDB.
 - CSP baru boleh diubah menjadi mode enforcement setelah login email/Google, sinkronisasi Supabase, analytics, tutorial GIF, manifest, dan service worker PWA lolos pengujian production tanpa pelanggaran CSP yang valid. Endpoint pengumpulan laporan belum diaktifkan pada tahap ini.
+
+### F15. Blog SEO
+
+- Blog publik tersedia di `/blog` dan artikel statis di `/blog/[slug]`, dapat diakses tanpa autentikasi serta tidak menampilkan bottom navigation/FAB aplikasi.
+- Enam artikel awal membahas pencatatan progres gym, progressive overload, program pemula, waktu istirahat antar set, membaca grafik progres, dan konsistensi latihan. Seluruh konten menggunakan bahasa Indonesia dan memiliki internal link ke artikel lain serta CTA menuju aplikasi.
+- Setiap artikel memiliki metadata title/description/keywords, canonical production, Open Graph Article, structured data `Article`, dan static params. Index blog dan semua artikel dicantumkan di sitemap serta diizinkan oleh robots.txt.
+- Landing page marketing menautkan Blog melalui header dan footer. Page view Mixpanel mengelompokkan `/blog` sebagai Blog dan route artikel sebagai Artikel Blog tanpa mengirim isi artikel sebagai properti event.
 
 ## 7. Data Model
 
@@ -268,15 +280,15 @@ Riwayat komposisi tubuh menggunakan model `BodyMeasurement`: `id`, `weightKg`, `
 v      v                          |
 +----------------+      +------------------+
 |   Hari Ini     |      |  Progres:        |
-| Latihan|Program|      |  Riwayat | Grafik |
+| Latihan|Program|      |  Grafik | Riwayat |
 +----------------+      +------------------+
 ```
 
 - **Bottom navigation (mobile-first):** tab bawah tetap — **Beranda** (`/`), **Hari Ini** (`/today`), FAB **+ Tambah** (`/workout/new`), **Progres** (`/progress`), **Profil** (`/account`).
 - **Hari Ini** memuat dua view (segmented control): **Latihan** (tanggal otomatis hari ini + pilihan program/Rest Day + quick-log) dan **Program** (buat/edit/hapus paket latihan). `/routine` redirect → `/today?view=program`.
-- **Progres** memuat dua view (segmented control): **Riwayat** (list histori + filter latihan/rentang tanggal + hapus) dan **Grafik** (chart beban per latihan). `/history` redirect → `/progress`.
+- **Progres** memuat dua view (segmented control): **Grafik** sebagai default (chart beban per latihan), lalu **Riwayat** (list histori + filter latihan/rentang tanggal + hapus). `/history` redirect → `/progress`.
 - Setelah simpan entri: kembali ke Dashboard.
-- Dashboard menampilkan kartu "Latihan Hari Ini" berisi nama program, jumlah latihan, Rest Day, atau status belum memilih → `/today`.
+- Dashboard menampilkan kartu "Latihan Hari Ini" berisi nama program, Rest Day, atau hanya label saat belum memilih → `/today`.
 
 ## 9. Non-Functional Requirements
 
