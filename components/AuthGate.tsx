@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/lib/useAuth";
+import { useIsMarketingHost } from "@/lib/useMarketingHost";
 
 const PUBLIC_PATHS = new Set([
   "/login",
@@ -17,6 +18,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const { user, loading } = useAuth();
+  const isMarketingHost = useIsMarketingHost();
   const isIndexablePublicPath =
     pathname === "/terms" ||
     pathname === "/aplikasi-tracking-gym" ||
@@ -36,7 +38,9 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
 
   // Konten marketing harus langsung tersedia pada HTML awal untuk crawler;
   // route ini tidak membaca data user dan tidak perlu menunggu pemulihan sesi.
-  if (isIndexablePublicPath) return children;
+  // Pada host marketing semua path app di-301 ke gym.abadikan.com (proxy.ts),
+  // jadi tidak ada halaman yang perlu di-gate di sini.
+  if (isIndexablePublicPath || isMarketingHost) return children;
 
   // Callback harus segera dirender agar Supabase dapat memproses token URL.
   if (

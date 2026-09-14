@@ -3,6 +3,7 @@
 import { usePathname } from "next/navigation";
 import BottomNav from "./BottomNav";
 import InstallPrompt from "./InstallPrompt";
+import { useIsMarketingHost } from "@/lib/useMarketingHost";
 
 function isMarketingPath(pathname: string): boolean {
   return pathname === "/aplikasi-tracking-gym" || pathname === "/blog" || pathname.startsWith("/blog/");
@@ -10,8 +11,9 @@ function isMarketingPath(pathname: string): boolean {
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const isMarketingHost = useIsMarketingHost();
 
-  if (isMarketingPath(pathname) || pathname === "/terms") {
+  if (isMarketingHost || isMarketingPath(pathname) || pathname === "/terms") {
     return <div className="min-h-screen">{children}</div>;
   }
 

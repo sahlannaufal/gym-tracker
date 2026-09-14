@@ -4,6 +4,7 @@ import { Suspense, useEffect, useRef, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { initMixpanel, identifyAndSetUser, trackEvent } from "@/lib/analytics";
 import { supabase } from "@/lib/supabase/client";
+import { useIsMarketingHost } from "@/lib/useMarketingHost";
 
 const PAGE_NAMES: Record<string, string> = {
   "/": "Dashboard",
@@ -32,8 +33,10 @@ const APPLICATION_PATHS = new Set([
   "/routine",
 ]);
 
-function getMarketingPageType(pathname: string): "landing_page" | "blog_index" | "blog_article" | null {
+function getMarketingPageType(pathname: string, isMarketingHost: boolean): "landing_page" | "blog_index" | "blog_article" | null {
   if (pathname === "/aplikasi-tracking-gym") return "landing_page";
+  // Pada host marketing, rewrite `/` mempertahankan URL root di browser.
+  if (pathname === "/" && isMarketingHost) return "landing_page";
   if (pathname === "/blog") return "blog_index";
   if (pathname.startsWith("/blog/")) return "blog_article";
   return null;
@@ -50,6 +53,7 @@ function isPwa(): boolean {
 function Tracker({ appVersion }: { appVersion: string }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const isMarketingHost = useIsMarketingHost();
   const [authResolved, setAuthResolved] = useState(!supabase);
   const authenticatedRef = useRef(false);
   const previousPageRef = useRef<string | null>(null);
@@ -88,7 +92,8 @@ function Tracker({ appVersion }: { appVersion: string }) {
       appOpenedTracked ||
       !pathname ||
       !APPLICATION_PATHS.has(pathname) ||
-      !authenticatedRef.current
+      !authenticatedRef.current ||
+      isMarketingHost
     ) {
       return;
     }
@@ -119,13 +124,20 @@ function Tracker({ appVersion }: { appVersion: string }) {
     if (lastPageRef.current === pagePath) return;
 
     trackEvent("Page Viewed", {
-      page_name: pathname === "/blog" ? "Blog" : pathname.startsWith("/blog/") ? "Artikel Blog" : PAGE_NAMES[pathname] ?? pathname,
+      page_name:
+        pathname === "/" && isMarketingHost
+          ? "Landing Page Marketing"
+          : pathname === "/blog"
+            ? "Blog"
+            : pathname.startsWith("/blog/")
+              ? "Artikel Blog"
+              : PAGE_NAMES[pathname] ?? pathname,
       page_path: pagePath,
       previous_page: previousPageRef.current,
       is_authenticated: authenticatedRef.current,
     });
 
-    const marketingPageType = getMarketingPageType(pathname);
+    const marketingPageType = getMarketingPageType(pathname, isMarketingHost);
     if (marketingPageType) {
       trackEvent("Marketing Site Viewed", {
         content_type: marketingPageType,
