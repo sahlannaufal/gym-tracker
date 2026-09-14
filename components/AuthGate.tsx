@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/lib/useAuth";
 import { useIsMarketingHost } from "@/lib/useMarketingHost";
+import { isMarketingHostname } from "@/lib/site";
 
 const PUBLIC_PATHS = new Set([
   "/login",
@@ -19,6 +20,12 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const { user, loading } = useAuth();
   const isMarketingHost = useIsMarketingHost();
+  // Hook hostname baru diperbarui setelah hydration. Guard sinkron ini
+  // mencegah effect redirect berjalan pada domain marketing sebelum update
+  // state hook tersebut selesai.
+  const isCurrentMarketingHost =
+    isMarketingHost ||
+    (typeof window !== "undefined" && isMarketingHostname(window.location.hostname));
   const isIndexablePublicPath =
     pathname === "/terms" ||
     pathname === "/aplikasi-tracking-gym" ||
@@ -28,7 +35,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
   const redirectTo =
     !loading && user && pathname === "/login"
       ? "/"
-      : !loading && !user && !isPublicPath
+      : !loading && !user && !isPublicPath && !isCurrentMarketingHost
         ? "/login"
         : null;
 
