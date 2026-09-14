@@ -1,12 +1,13 @@
 import type { MetadataRoute } from "next";
+import { MARKETING_ORIGIN } from "@/lib/site";
 
 export default function robots(): MetadataRoute.Robots {
   return {
     rules: {
       userAgent: "*",
-      allow: ["/aplikasi-tracking-gym", "/blog", "/blog/"],
+      allow: ["/aplikasi-tracking-gym", "/blog", "/blog/", "/terms"],
       disallow: ["/account", "/auth/", "/forgot-password", "/progress", "/today", "/workout/"],
     },
-    sitemap: "https://gym.abadikan.com/sitemap.xml",
+    sitemap: `${MARKETING_ORIGIN}/sitemap.xml`,
   };
 }

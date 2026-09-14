@@ -1,8 +1,16 @@
 # Ganti gym.example.com dengan domain/subdomain kamu, lalu:
 # A record domain -> IP VPS, dan jalankan `docker compose up -d --build`.
 # Caddy otomatis mengurus HTTPS (Let's Encrypt) — syarat PWA bisa di-install.
+# Landing/Blog/Terms dipisah ke domain marketing abadikan.com (routing
+# per-hostname ditangani proxy.ts di dalam aplikasi).
 gym.abadikan.com {
 	reverse_proxy app:3000
+}
+abadikan.com {
+    reverse_proxy app:3000
+}
+www.abadikan.com {
+    redir https://abadikan.com{uri} permanent
 }
 # Domain/Subdomain untuk Project Ayu
 ayuadina.abadikan.com {

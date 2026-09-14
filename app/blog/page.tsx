@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+import TrackedBlogLink from "@/components/TrackedBlogLink";
 import { BLOG_POSTS } from "@/lib/blog";
 
-const pageUrl = "https://gym.abadikan.com/blog";
+const pageUrl = "https://abadikan.com/blog";
 
 export const metadata: Metadata = {
   title: "Blog Latihan Gym dan Progres Kebugaran | Abadikan Gym",
@@ -26,10 +26,24 @@ export default function BlogPage() {
           <article key={post.slug} className="flex flex-col rounded-2xl border border-gray-800 bg-gray-900/40 p-6">
             <p className="text-xs font-medium text-lime-400">{post.readingTime}</p>
             <h2 className="mt-3 text-xl font-bold leading-snug">
-              <Link href={`/blog/${post.slug}`} className="hover:text-lime-400">{post.title}</Link>
+              <TrackedBlogLink
+                href={`/blog/${post.slug}`}
+                articleSlug={post.slug}
+                location="blog_index_title"
+                className="hover:text-lime-400"
+              >
+                {post.title}
+              </TrackedBlogLink>
             </h2>
             <p className="mt-3 flex-1 text-sm leading-6 text-gray-400">{post.description}</p>
-            <Link href={`/blog/${post.slug}`} className="mt-5 text-sm font-semibold text-lime-400 hover:text-lime-300">Baca panduan →</Link>
+            <TrackedBlogLink
+              href={`/blog/${post.slug}`}
+              articleSlug={post.slug}
+              location="blog_index_read_more"
+              className="mt-5 text-sm font-semibold text-lime-400 hover:text-lime-300"
+            >
+              Baca panduan →
+            </TrackedBlogLink>
           </article>
         ))}
       </section>

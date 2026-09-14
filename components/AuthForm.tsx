@@ -1,13 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { isSyncConfigured, supabase } from "@/lib/supabase/client";
 import { requestSync } from "@/lib/sync";
 import { identifyAndSetUser, trackEvent } from "@/lib/analytics";
 import { consumeOAuthIntent, saveOAuthIntent } from "@/lib/oauthIntent";
-import { consumeMarketingAttribution } from "@/lib/marketingAttribution";
+import {
+  consumeMarketingAttribution,
+  saveMarketingAttributionFromUrl,
+} from "@/lib/marketingAttribution";
 import PasswordInput from "./PasswordInput";
 
 function normalizeLoginFailure(error: unknown): string {
@@ -51,6 +54,14 @@ export default function AuthForm() {
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
   const [signupSubmitted, setSignupSubmitted] = useState(false);
+
+  // CTA marketing lintas domain tiba di /login dengan atribusi pada query
+  // string; serap ke localStorage origin aplikasi agar funnel
+  // landing/blog → registrar/login tetap teranalisis.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    saveMarketingAttributionFromUrl(new URLSearchParams(window.location.search));
+  }, []);
 
   if (!isSyncConfigured()) {
     return (

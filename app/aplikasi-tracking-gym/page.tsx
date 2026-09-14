@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import TrackedMarketingLink from "@/components/TrackedMarketingLink";
 
-const pageUrl = "https://gym.abadikan.com/aplikasi-tracking-gym";
+const pageUrl = "https://abadikan.com/";
 
 export const metadata: Metadata = {
   title: "Aplikasi Tracking Gym & Progres Latihan | Abadikan Gym",
@@ -74,7 +74,7 @@ export default function MarketingPage() {
 
       <header className="border-b border-gray-800/80">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-4 sm:px-8">
-          <Link href="/aplikasi-tracking-gym" className="flex items-center gap-3 font-bold">
+          <Link href="/" className="flex items-center gap-3 font-bold">
             <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-lime-400 text-gray-950">
               <svg aria-hidden="true" viewBox="0 0 32 32" className="h-6 w-6" fill="currentColor">
                 <rect x="7" y="14" width="18" height="4" rx="2" />
@@ -165,6 +165,7 @@ export default function MarketingPage() {
 
       <footer className="border-t border-gray-800 px-5 py-8 text-center text-sm text-gray-500 sm:px-8">
         <Link href="/blog" className="mb-3 inline-block text-gray-300 hover:text-lime-400">Baca Blog</Link>
+        <Link href="/terms" className="mb-3 ml-5 inline-block text-gray-300 hover:text-lime-400">Syarat &amp; Ketentuan</Link>
         <p>© {new Date().getFullYear()} Abadikan Gym. Catat dan pantau progres latihanmu.</p>
       </footer>
     </div>

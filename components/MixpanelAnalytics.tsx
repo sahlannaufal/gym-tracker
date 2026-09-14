@@ -22,6 +22,23 @@ const PAGE_NAMES: Record<string, string> = {
 let appOpenedTracked = false;
 let pwaOpenedTracked = false;
 
+const APPLICATION_PATHS = new Set([
+  "/",
+  "/today",
+  "/workout/new",
+  "/progress",
+  "/account",
+  "/history",
+  "/routine",
+]);
+
+function getMarketingPageType(pathname: string): "landing_page" | "blog_index" | "blog_article" | null {
+  if (pathname === "/aplikasi-tracking-gym") return "landing_page";
+  if (pathname === "/blog") return "blog_index";
+  if (pathname.startsWith("/blog/")) return "blog_article";
+  return null;
+}
+
 function isPwa(): boolean {
   const standaloneNavigator = navigator as Navigator & { standalone?: boolean };
   return (
@@ -66,7 +83,15 @@ function Tracker({ appVersion }: { appVersion: string }) {
   }, []);
 
   useEffect(() => {
-    if (!authResolved || appOpenedTracked) return;
+    if (
+      !authResolved ||
+      appOpenedTracked ||
+      !pathname ||
+      !APPLICATION_PATHS.has(pathname) ||
+      !authenticatedRef.current
+    ) {
+      return;
+    }
     const openedAsPwa = isPwa();
     appOpenedTracked = true;
     trackEvent("App Opened", {
@@ -85,7 +110,7 @@ function Tracker({ appVersion }: { appVersion: string }) {
         detection_method: "standalone_display_mode",
       });
     }
-  }, [appVersion, authResolved]);
+  }, [appVersion, authResolved, pathname]);
 
   useEffect(() => {
     if (!authResolved || !pathname) return;
@@ -99,6 +124,23 @@ function Tracker({ appVersion }: { appVersion: string }) {
       previous_page: previousPageRef.current,
       is_authenticated: authenticatedRef.current,
     });
+
+    const marketingPageType = getMarketingPageType(pathname);
+    if (marketingPageType) {
+      trackEvent("Marketing Site Viewed", {
+        content_type: marketingPageType,
+        page_path: pagePath,
+        is_authenticated: authenticatedRef.current,
+      });
+    }
+
+    if (marketingPageType === "blog_article") {
+      trackEvent("Blog Article Opened", {
+        article_slug: pathname.slice("/blog/".length),
+        page_path: pagePath,
+        is_authenticated: authenticatedRef.current,
+      });
+    }
     previousPageRef.current = pagePath;
     lastPageRef.current = pagePath;
   }, [authResolved, pathname, searchParams]);

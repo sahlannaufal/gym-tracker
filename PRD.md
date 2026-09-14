@@ -167,7 +167,7 @@ Aplikasi web sederhana (MVP) untuk mencatat dan memantau progres latihan beban (
 - SDK browser dibungkus oleh `lib/analytics.ts`; komponen dan service aplikasi tidak memanggil SDK secara langsung.
 - Tracking hanya aktif jika build memakai `NODE_ENV=production`, `NEXT_PUBLIC_APP_ENV=production`, dan `NEXT_PUBLIC_MIXPANEL_TOKEN` tersedia. Development menampilkan preview via `console.debug`; staging/preview menjadi no-op.
 - Inisialisasi menggunakan persistence `localStorage`, `track_pageview: false`, dan `debug: false`. Route App Router dicatat oleh `components/MixpanelAnalytics.tsx` tanpa auto page-view SDK.
-- Event: `App Opened`, `Page Viewed`, `Landing CTA Clicked`, `Registration Completed`, `Registration Failed`, `Login Completed`, `Login Failed`, `Logout Completed`, `Password Reset Requested`, `Password Reset Request Failed`, `Password Reset Completed`, `Password Reset Failed`, `Workout Logged`, `Workout Updated`, `Workout Deleted`, `Workout History Viewed`, `Progress Chart Viewed`, `Quick Log Used`, dan `Workout Sync Completed`. Registrasi berhasil menyimpan metode dan status kebutuhan verifikasi serta dihubungkan ke stable Supabase user ID jika tersedia; kegagalan registrasi/reset hanya menyimpan kategori penyebab tanpa alamat email.
+- Event: `App Opened`, `Page Viewed`, `Marketing Site Viewed`, `Landing CTA Clicked`, `Blog Article Opened`, `Blog Article Clicked`, `Blog CTA Clicked`, `Registration Completed`, `Registration Failed`, `Login Completed`, `Login Failed`, `Logout Completed`, `Password Reset Requested`, `Password Reset Request Failed`, `Password Reset Completed`, `Password Reset Failed`, `Workout Logged`, `Workout Updated`, `Workout Deleted`, `Workout History Viewed`, `Progress Chart Viewed`, `Quick Log Used`, dan `Workout Sync Completed`. `App Opened` hanya dicatat setelah pengguna terautentikasi membuka route fitur aplikasi, sehingga kunjungan landing page/blog tidak menambah metrik penggunaan aplikasi. Registrasi berhasil menyimpan metode dan status kebutuhan verifikasi serta dihubungkan ke stable Supabase user ID jika tersedia; kegagalan registrasi/reset hanya menyimpan kategori penyebab tanpa alamat email.
 - Funnel instalasi PWA dicatat melalui `PWA Install Prompt Shown`, `PWA Install Clicked`, `PWA Install Accepted`, `PWA Install Dismissed`, dan `PWA Installed` pada browser yang mendukung install prompt. `PWA Opened` dicatat satu kali per app load ketika display mode `standalone` terdeteksi, termasuk sebagai konfirmasi penggunaan setelah Add to Home Screen pada iOS. Event terhubung ke stable user ID Mixpanel setelah autentikasi; profil user yang instalasinya terdeteksi diberi `pwa_installed` dan `pwa_last_installed_at`.
 - Session Supabase yang dipulihkan maupun login baru dihubungkan ke stable user ID. Profile menyimpan `$email` dari user terautentikasi serta `$name`/`role` hanya jika tersedia; email tidak dikirim pada event aktivitas.
 - Logout mencatat `Logout Completed` sebelum identitas Mixpanel di-reset. Error analytics selalu diabaikan agar alur utama tetap berjalan.
@@ -190,10 +190,14 @@ Aplikasi web sederhana (MVP) untuk mencatat dan memantau progres latihan beban (
 
 ### F13. Landing Page Marketing
 
-- Landing page publik tersedia terpisah di `/aplikasi-tracking-gym`; route `/` tetap menjadi dashboard sehingga routing aplikasi yang sudah ada tidak berubah.
-- Halaman marketing dirender sebagai konten server yang dapat diindeks, memakai metadata unik, canonical production, Open Graph, serta structured data `SoftwareApplication` tanpa rating/review buatan. Route dicantumkan sebagai prioritas utama di `/sitemap.xml` dan sitemap diumumkan melalui `/robots.txt`.
-- Route marketing tidak menampilkan bottom navigation, FAB, atau install prompt aplikasi. CTA mengarah ke `/login`; autentikasi dan seluruh halaman data pengguna tetap berada di balik auth gate.
-- Setiap CTA marketing dicatat sebagai `Landing CTA Clicked` dengan nama, tujuan, dan status apakah menuju autentikasi. CTA autentikasi menyimpan attribution first-party maksimal dua jam; `Registration Completed`/`Login Completed` berikutnya membawa `entry_source: landing_page` dan `landing_cta`, sehingga funnel landing → CTA → autentikasi dapat dianalisis tanpa menyimpan data pribadi di event CTA.
+- Situs marketing dipisah ke domain brand `abadikan.com` (landing page, blog, dan syarat & ketentuan), tidak lagi disajikan di `gym.abadikan.com/aplikasi-tracking-gym`. Domain aplikasi `gym.abadikan.com` murni untuk dashboard/login/data.
+- Routing per-hostname ditangani `proxy.ts` (konvensi proxy Next 16): di `abadikan.com`, `/` dan `/aplikasi-tracking-gym` di-rewrite ke landing, `/blog*` dan `/terms` dilayani langsung, sedangkan route aplikasi (`/login`, `/today`, `/progress`, dst.) di-301 ke `https://gym.abadikan.com<path>` dengan query string dipertahankan. Di `gym.abadikan.com`, route marketing lama (`/aplikasi-tracking-gym`, `/blog*`, `/terms`) di-301 ke `abadikan.com` agar sinyal SEO berkumpul di canonical baru. Host selain keduanya (localhost/IP/domain sementara) dibiarkan lewat tanpa intervensi sehingga development tidak terganggu.
+- Kedua domain dilayani kontainer/VPS yang sama: `Caddyfile` menambah blok `abadikan.com` (dan redirect permanen `www.abadikan.com`) di samping `gym.abadikan.com`.
+- Landing tersedia sebagai halaman server yang dapat diindeks di `https://abadikan.com/`, memakai metadata unik, canonical production, Open Graph, serta structured data `SoftwareApplication` tanpa rating/review buatan. Blog dan terms juga memakai canonical `abadikan.com`; semuanya dicantumkan di `/sitemap.xml` (URL `abadikan.com`) dan diizinkan oleh `/robots.txt`.
+- Halaman marketing tidak menampilkan bottom navigation, FAB, atau install prompt aplikasi. Service worker/PWA dimatikan di domain marketing (`SerwistProvider` menerima prop `disable` saat hostname marketing terdeteksi) agar landing/blog tidak menjadi aplikasi yang bisa di-install. CTA autentikasi mengarah ke `https://gym.abadikan.com/login`.
+- Karena localStorage tidak dapat dibaca lintas origin, atribusi marketing dikirim lewat query string pada URL login (mis. `https://gym.abadikan.com/login?entry_source=landing_page&landing_cta=hero_start`); halaman `/login` menyerapnya ke localStorage origin aplikasi (`saveMarketingAttributionFromUrl`), sehingga `Registration Completed`/`Login Completed` berikutnya tetap membawa `entry_source`/`landing_cta`/`blog_cta` dan funnel landing/blog → autentikasi dapat dianalisis. Event CTA `Landing CTA Clicked`/`Blog CTA Clicked` dan `Marketing Site Viewed` tetap tercatat dari domain marketing.
+- Konstanta domain (`gym.abadikan.com`, `abadikan.com`) terpusat di `lib/site.ts` bersama helper `buildAuthUrl` untuk CTA autentikasi.
+- Autentikasi dan seluruh halaman data pengguna tetap berada di balik auth gate di `gym.abadikan.com`.
 
 ### F14. Security Headers & CSP
 
@@ -206,7 +210,14 @@ Aplikasi web sederhana (MVP) untuk mencatat dan memantau progres latihan beban (
 - Blog publik tersedia di `/blog` dan artikel statis di `/blog/[slug]`, dapat diakses tanpa autentikasi serta tidak menampilkan bottom navigation/FAB aplikasi.
 - Enam artikel awal membahas pencatatan progres gym, progressive overload, program pemula, waktu istirahat antar set, membaca grafik progres, dan konsistensi latihan. Seluruh konten menggunakan bahasa Indonesia dan memiliki internal link ke artikel lain serta CTA menuju aplikasi.
 - Setiap artikel memiliki metadata title/description/keywords, canonical production, Open Graph Article, structured data `Article`, dan static params. Index blog dan semua artikel dicantumkan di sitemap serta diizinkan oleh robots.txt.
-- Landing page marketing menautkan Blog melalui header dan footer. Page view Mixpanel mengelompokkan `/blog` sebagai Blog dan route artikel sebagai Artikel Blog tanpa mengirim isi artikel sebagai properti event.
+- Landing page marketing menautkan Blog melalui header dan footer. Mixpanel mencatat `Marketing Site Viewed` untuk landing, index blog, dan artikel; `Blog Article Opened` membawa slug artikel, sementara klik kartu/tautan artikel dan CTA autentikasi dicatat terpisah tanpa mengirim isi artikel. CTA blog menyimpan attribution maksimal dua jam agar autentikasi berikutnya membawa `entry_source: blog` dan `blog_cta`.
+
+### F16. Syarat & Ketentuan
+
+- Halaman publik `/terms` dapat dibaca sebelum login, tanpa menunggu pemulihan sesi dan tanpa navigasi bawah/FAB.
+- Halaman disajikan di domain marketing `abadikan.com/terms` (redirect dari `gym.abadikan.com/terms`); tautan footer mengarah absolut ke login dan tentang aplikasi di domain masing-masing.
+- Tautan hanya tersedia di footer landing page, tidak ditampilkan di login atau Profil. Informasi mencakup penggunaan akun, batas tutorial/perhitungan kesehatan, penyimpanan lokal/cloud, Supabase/Google/ExerciseDB, identifikasi akun pada Mixpanel, keterbatasan penghapusan, serta perubahan layanan.
+- Aplikasi belum mencatat persetujuan ketentuan atau menyediakan kontrol persetujuan analitik. Halaman ini tidak menggantikan kebijakan privasi lengkap. Identitas pengelola dan kontak perlu dikonfirmasi pemilik sebelum publikasi.
 
 ## 7. Data Model
 
@@ -284,6 +295,7 @@ v      v                          |
 +----------------+      +------------------+
 ```
 
+- **Domain:** aplikasi diakses di `gym.abadikan.com`; situs marketing (landing/blog/terms) di `abadikan.com` dengan routing per-hostname `proxy.ts`. URL marketing lama di subdomain aplikasi di-301 ke domain marketing.
 - **Bottom navigation (mobile-first):** tab bawah tetap — **Beranda** (`/`), **Hari Ini** (`/today`), FAB **+ Tambah** (`/workout/new`), **Progres** (`/progress`), **Profil** (`/account`).
 - **Hari Ini** memuat dua view (segmented control): **Latihan** (tanggal otomatis hari ini + pilihan program/Rest Day + quick-log) dan **Program** (buat/edit/hapus paket latihan). `/routine` redirect → `/today?view=program`.
 - **Progres** memuat dua view (segmented control): **Grafik** sebagai default (chart beban per latihan), lalu **Riwayat** (list histori + filter latihan/rentang tanggal + hapus). `/history` redirect → `/progress`.

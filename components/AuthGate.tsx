@@ -18,6 +18,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const { user, loading } = useAuth();
   const isIndexablePublicPath =
+    pathname === "/terms" ||
     pathname === "/aplikasi-tracking-gym" ||
     pathname === "/blog" ||
     pathname.startsWith("/blog/");

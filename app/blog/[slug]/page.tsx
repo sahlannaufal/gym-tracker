@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import TrackedBlogLink from "@/components/TrackedBlogLink";
 import { BLOG_POSTS, getBlogPost } from "@/lib/blog";
+import { MARKETING_ORIGIN } from "@/lib/site";
 
 type Props = { params: Promise<{ slug: string }> };
 
@@ -13,7 +15,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const post = getBlogPost(slug);
   if (!post) return {};
-  const url = `https://gym.abadikan.com/blog/${post.slug}`;
+  const url = `${MARKETING_ORIGIN}/blog/${post.slug}`;
   return {
     title: `${post.title} | Abadikan Gym`,
     description: post.description,
@@ -28,7 +30,7 @@ export default async function BlogPostPage({ params }: Props) {
   const { slug } = await params;
   const post = getBlogPost(slug);
   if (!post) notFound();
-  const url = `https://gym.abadikan.com/blog/${post.slug}`;
+  const url = `${MARKETING_ORIGIN}/blog/${post.slug}`;
   const related = BLOG_POSTS.filter((item) => item.slug !== post.slug).slice(0, 3);
   const structuredData = {
     "@context": "https://schema.org",
@@ -72,13 +74,31 @@ export default async function BlogPostPage({ params }: Props) {
       <aside className="rounded-3xl bg-lime-400 p-7 text-gray-950 sm:p-9">
         <h2 className="text-2xl font-black">Catat progres latihanmu</h2>
         <p className="mt-2 leading-7 text-gray-800">Simpan beban, repetisi, set, dan program latihan dalam satu tempat.</p>
-        <Link href="/login" className="mt-5 inline-block rounded-xl bg-gray-950 px-5 py-3 font-bold text-white hover:bg-gray-900">Mulai dengan Abadikan Gym</Link>
+        <TrackedBlogLink
+          href="/login"
+          ctaName="article_start"
+          location="article_cta"
+          className="mt-5 inline-block rounded-xl bg-gray-950 px-5 py-3 font-bold text-white hover:bg-gray-900"
+        >
+          Mulai dengan Abadikan Gym
+        </TrackedBlogLink>
       </aside>
 
       <section className="mt-12 border-t border-gray-800 pt-8">
         <h2 className="text-xl font-bold">Artikel lainnya</h2>
         <ul className="mt-4 space-y-3">
-          {related.map((item) => <li key={item.slug}><Link href={`/blog/${item.slug}`} className="text-gray-300 hover:text-lime-400">{item.title} →</Link></li>)}
+          {related.map((item) => (
+            <li key={item.slug}>
+              <TrackedBlogLink
+                href={`/blog/${item.slug}`}
+                articleSlug={item.slug}
+                location="related_articles"
+                className="text-gray-300 hover:text-lime-400"
+              >
+                {item.title} →
+              </TrackedBlogLink>
+            </li>
+          ))}
         </ul>
       </section>
     </article>

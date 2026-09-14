@@ -6,6 +6,7 @@ App PWA (Next.js). Data utama di **LocalStorage browser (offline-first)** dengan
 - VPS dengan **domain/subdomain** yang bisa diarahkan (DNS) ke IP VPS.
 - **Node ≥ 20.9** hanya dibutuhkan untuk build manual; Docker build juga berjalan di dalam image (`node:22-alpine`).
 - **Akun Supabase (free tier)** jika ingin mengaktifkan login & sinkronisasi.
+- Dua domain: aplikasi di `gym.abadikan.com` dan situs marketing (landing/blog/terms) di `abadikan.com`. Keduanya dilayani kontainer yang sama; routing per-hostname ditangani `proxy.ts`.
 
 ## 0. (Opsional) Siapkan Supabase
 1. Buat project di https://supabase.com → **Project Settings → API**: catat **Project URL** & **anon key** (bukan `service_role`).
@@ -28,14 +29,20 @@ docker compose version
 ## 2. Arahkan DNS
 Buat record **A** di panel DNS domain kamu, misalnya untuk subdomain:
 ```
-gym.example.com   A   <IP_VPS>
+gym.abadikan.com   A   <IP_VPS>
 ```
+Untuk domain marketing (`abadikan.com`), tambahkan juga:
+```
+abadikan.com       A   <IP_VPS>
+www.abadikan.com   A   <IP_VPS>
+```
+> Jika `abadikan.com` memakai proxy Cloudflare (orange cloud), **matikan proxy** (set ke DNS-only/grey cloud) agar Caddy di VPS yang menerbitkan sertifikat Let's Encrypt. Ini juga yang membuat `gym.abadikan.com` saat ini berjalan mulus.
 
 ## 3. Clone & konfigurasi
 ```bash
 git clone <url-repo-mu> gym_tracker && cd gym_tracker
 ```
-Edit `Caddyfile`, ganti `gym.example.com` dengan domain aslimu.
+Edit `Caddyfile`, ganti `gym.example.com` dengan domain aslimu. Pastikan blok `abadikan.com` (dan redirect `www.abadikan.com`) ikut diterapkan agar landing page, blog, dan terms dilayani di domain marketing.
 
 ## 4. Build & jalankan
 ```bash
@@ -58,9 +65,11 @@ NEXT_PUBLIC_APP_ENV=production
 
 ## 5. Verifikasi
 - `https://gym.example.com` → dashboard terbuka dengan HTTPS (Caddy auto-issue SSL Let's Encrypt).
-- Pastikan service worker aktif (DevTools → Application → Service Workers) → `sw.js` dari `/serwist/sw.js`.
+- `https://abadikan.com` → landing page marketing terbuka; `https://abadikan.com/blog` dan `/terms` ikut berfungsi.
+- Redirect marketing lama: `https://gym.example.com/aplikasi-tracking-gym` → `301` ke `https://abadikan.com/`; `https://abadikan.com/login` → `301` ke `https://gym.example.com/login`.
+- Pastikan service worker aktif (DevTools → Application → Service Workers) → `sw.js` dari `/serwist/sw.js` — hanya pada `gym.example.com`, tidak pada domain marketing.
 - Uji install PWA dari HP: buka site → menu browser → "Add to Home Screen".
-- Uji login: tab Profil → Masuk/Daftar → data lokal ter-upload otomatis.
+- Uji login: tab Profil → Masuk/Daftar → data lokal ter-upload otomatis. Cek bahwa klik CTA "Mulai Gratis" di landing mengarah ke `https://gym.example.com/login?entry_source=landing_page&landing_cta=hero_start`.
 - Verifikasi Mixpanel: DevTools → Network menampilkan request Mixpanel setelah aplikasi dibuka, lalu cek **Mixpanel → Data → Events**. Jika PWA masih memakai bundle lama, unregister service worker/hapus site data atau uji melalui incognito.
 
 ## Log & update

@@ -11,7 +11,7 @@ function isMarketingPath(pathname: string): boolean {
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
-  if (isMarketingPath(pathname)) {
+  if (isMarketingPath(pathname) || pathname === "/terms") {
     return <div className="min-h-screen">{children}</div>;
   }
 
