@@ -85,6 +85,33 @@ export interface BodyMeasurement {
   updatedAt: string;
 }
 
+export type CoachGoalType = "build_muscle";
+
+// Iterasi pertama hanya mendukung satu goal aktif agar arahan Coach tetap
+// sederhana untuk pemula. Target/program dapat diperbarui tanpa membuat goal
+// baru.
+export interface CoachGoal {
+  version: 1;
+  type: CoachGoalType;
+  weeklySessionTarget: number;
+  programId: string | null;
+  startedAt: string;
+  updatedAt: string;
+}
+
+export interface CustomExercise {
+  id: string;
+  name: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CustomExerciseStore {
+  version: 1;
+  exercises: CustomExercise[];
+  updatedAt?: string;
+}
+
 export type BodyMeasurementInput = Omit<
   BodyMeasurement,
   "id" | "createdAt" | "updatedAt"

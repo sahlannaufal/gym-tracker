@@ -10,11 +10,13 @@ export default function ExerciseCatalogPicker({
   onAdd,
   onTutorial,
   onCustom,
+  customExercises,
 }: {
   selected: string[];
   onAdd: (exercise: string) => void;
   onTutorial: (exercise: string) => void;
   onCustom: () => void;
+  customExercises: string[];
 }) {
   const [items, setItems] = useState<ExerciseCatalogItem[]>([]);
   const [query, setQuery] = useState("");
@@ -53,6 +55,9 @@ export default function ExerciseCatalogPicker({
   }, [items, query, category, equipment]);
   const visibleItems = filtered.slice(0, visibleCount);
   const hasMore = visibleCount < filtered.length;
+  const matchingCustomExercises = customExercises.filter((exercise) =>
+    !query.trim() || exercise.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase()),
+  );
 
   const updateFilter = (update: () => void) => {
     update();
@@ -104,8 +109,26 @@ export default function ExerciseCatalogPicker({
         <p className="text-xs text-gray-500">{filtered.length} latihan ditemukan</p>
       </div>
 
+      {matchingCustomExercises.length > 0 && (
+        <div className="mb-3 border-b border-gray-800 pb-3">
+          <p className="mb-1 px-2 text-xs font-semibold uppercase tracking-wide text-gray-500">Latihan Saya</p>
+          <ul className="space-y-1">
+            {matchingCustomExercises.map((exercise) => {
+              const isSelected = selected.includes(exercise);
+              return (
+                <li key={exercise} className="rounded-lg hover:bg-gray-900">
+                  <button type="button" onClick={() => onAdd(exercise)} disabled={isSelected} className="w-full px-2 py-2 text-left text-sm disabled:text-gray-600">
+                    {exercise}{isSelected && <span className="ml-2 text-[11px] text-lime-500/70">Ditambahkan</span>}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
+
       {visibleItems.length === 0 ? (
-        <p className="py-6 text-center text-sm text-gray-500">Latihan tidak ditemukan.</p>
+        matchingCustomExercises.length === 0 && <p className="py-6 text-center text-sm text-gray-500">Latihan tidak ditemukan.</p>
       ) : (
         <ul className="space-y-1">
           {visibleItems.map((item, index) => {

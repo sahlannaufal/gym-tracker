@@ -1,14 +1,18 @@
 import { isSyncConfigured, supabase } from "./supabase/client";
 import {
   loadPendingDeletes,
+  loadCoachGoal,
+  loadCustomExerciseStore,
   loadTrainingProgramStore,
   loadWorkouts,
   removePendingDelete,
   replaceWorkouts,
   saveTrainingProgramStore,
+  saveCoachGoal,
+  saveCustomExerciseStore,
   setStorageUser,
 } from "./storage";
-import type { TrainingProgramStore, Workout } from "./types";
+import type { CoachGoal, CustomExerciseStore, TrainingProgramStore, Workout } from "./types";
 import type { BodyMeasurement } from "./types";
 import {
   loadBodyMeasurementDeletes,
@@ -316,7 +320,60 @@ export async function syncAll(userId: string): Promise<void> {
       }, userId);
     }
 
-    // 6. Riwayat komposisi tubuh — cache lokal dipisahkan per user.
+    // 6. Goal Coach — satu dokumen per user, last-write-wins by updated_at.
+    const { data: coachRow, error: coachPullError } = await supabase
+      .from("coach_goals")
+      .select("goal, updated_at")
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (coachPullError) throw coachPullError;
+
+    const localGoal = loadCoachGoal(userId);
+    const serverGoal = coachRow?.goal as CoachGoal | undefined;
+    const serverGoalUpdatedAt = coachRow?.updated_at as string | undefined;
+    if (localGoal && (!serverGoalUpdatedAt || localGoal.updatedAt > serverGoalUpdatedAt)) {
+      const { error: coachUpsertError } = await supabase.from("coach_goals").upsert({
+        user_id: userId,
+        goal: localGoal,
+        updated_at: localGoal.updatedAt,
+      });
+      if (coachUpsertError) throw coachUpsertError;
+    } else if (serverGoal && serverGoalUpdatedAt) {
+      // Timestamp DB adalah sumber konflik; salin ke payload agar mutasi lokal
+      // berikutnya selalu memiliki updatedAt yang dapat dibandingkan.
+      saveCoachGoal({ ...serverGoal, updatedAt: serverGoalUpdatedAt }, userId);
+    }
+
+    // 7. Daftar latihan custom — satu dokumen per user, last-write-wins.
+    const { data: customLibraryRow, error: customLibraryError } = await supabase
+      .from("custom_exercise_libraries")
+      .select("exercises, updated_at")
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (customLibraryError) throw customLibraryError;
+
+    const localCustomStore = loadCustomExerciseStore(userId);
+    const serverCustomUpdatedAt = customLibraryRow?.updated_at as string | undefined;
+    const serverCustomExercises = (customLibraryRow?.exercises ?? []) as CustomExerciseStore["exercises"];
+    const localCustomIsNewer =
+      localCustomStore.exercises.length > 0 &&
+      (!serverCustomUpdatedAt || (!!localCustomStore.updatedAt && localCustomStore.updatedAt > serverCustomUpdatedAt));
+    if (localCustomIsNewer) {
+      const { error: customUpsertError } = await supabase.from("custom_exercise_libraries").upsert({
+        user_id: userId,
+        exercises: localCustomStore.exercises,
+        updated_at: localCustomStore.updatedAt ?? new Date().toISOString(),
+      });
+      if (customUpsertError) throw customUpsertError;
+    } else if (serverCustomUpdatedAt) {
+      saveCustomExerciseStore({
+        version: 1,
+        exercises: serverCustomExercises,
+        updatedAt: serverCustomUpdatedAt,
+      }, userId);
+    }
+
+    // 8. Riwayat komposisi tubuh — cache lokal dipisahkan per user.
     for (const id of loadBodyMeasurementDeletes(userId)) {
       const deleted = await deleteBodyMeasurementFromCloud(id, userId);
       if (!deleted) {

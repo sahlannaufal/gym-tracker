@@ -3,12 +3,14 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useWorkouts } from "@/lib/useWorkouts";
+import { useCustomExercises } from "@/lib/useCustomExercises";
 import { todayLocalISO } from "@/lib/format";
 import {
   CUSTOM_EXERCISE_VALUE,
-  EXERCISE_CATEGORIES,
 } from "@/lib/constants/exercises";
 import FloatingRestTimer from "./FloatingRestTimer";
+import ExerciseCatalogPicker from "./ExerciseCatalogPicker";
+import ExerciseTutorialModal from "./ExerciseTutorialModal";
 
 interface FormValues {
   exerciseSelect: string;
@@ -29,10 +31,6 @@ const initialValues: FormValues = {
   sets: "",
   date: todayLocalISO(),
 };
-
-const knownExerciseNames = new Set(
-  EXERCISE_CATEGORIES.flatMap((group) => group.exercises)
-);
 
 function validate(values: FormValues): FormErrors {
   const errors: FormErrors = {};
@@ -104,22 +102,19 @@ export default function WorkoutForm({
 }) {
   const router = useRouter();
   const { workouts, isLoaded, addWorkout } = useWorkouts();
+  const { customExercises, addCustomExercise } = useCustomExercises();
   const [values, setValues] = useState<FormValues>(() => {
     if (!initialExercise) return initialValues;
-    if (knownExerciseNames.has(initialExercise)) {
-      return { ...initialValues, exerciseSelect: initialExercise };
-    }
-    return {
-      ...initialValues,
-      exerciseSelect: CUSTOM_EXERCISE_VALUE,
-      customExercise: initialExercise,
-    };
+    return { ...initialValues, exerciseSelect: initialExercise };
   });
   const [errors, setErrors] = useState<FormErrors>({});
   const [timerOpen, setTimerOpen] = useState(false);
   const [timerExercise, setTimerExercise] = useState<string>();
   const [timerRestartKey, setTimerRestartKey] = useState(0);
   const [saveNotice, setSaveNotice] = useState(false);
+  const [exercisePickerOpen, setExercisePickerOpen] = useState(false);
+  const [customOpen, setCustomOpen] = useState(false);
+  const [tutorialExercise, setTutorialExercise] = useState<string>();
   const noticeTimeoutRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -159,19 +154,12 @@ export default function WorkoutForm({
     if (errors[key]) setErrors((prev) => ({ ...prev, [key]: undefined }));
   };
 
-  const handleSelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setValues((prev) => ({
-      ...prev,
-      exerciseSelect: e.target.value,
-      customExercise:
-        e.target.value === CUSTOM_EXERCISE_VALUE ? prev.customExercise : "",
-    }));
+  const selectExercise = (exercise: string) => {
+    setValues((prev) => ({ ...prev, exerciseSelect: exercise, customExercise: "" }));
+    setExercisePickerOpen(false);
+    setCustomOpen(false);
     if (errors.exerciseSelect || errors.customExercise) {
-      setErrors((prev) => ({
-        ...prev,
-        exerciseSelect: undefined,
-        customExercise: undefined,
-      }));
+      setErrors((prev) => ({ ...prev, exerciseSelect: undefined, customExercise: undefined }));
     }
   };
 
@@ -186,6 +174,7 @@ export default function WorkoutForm({
       values.exerciseSelect === CUSTOM_EXERCISE_VALUE
         ? values.customExercise.trim()
         : values.exerciseSelect;
+    if (values.exerciseSelect === CUSTOM_EXERCISE_VALUE) addCustomExercise(exercise);
     addWorkout(
       {
         exercise,
@@ -219,36 +208,41 @@ export default function WorkoutForm({
         htmlFor="exerciseSelect"
         error={errors.exerciseSelect ?? errors.customExercise}
       >
-        <select
+        <button
           id="exerciseSelect"
-          value={values.exerciseSelect}
-          onChange={handleSelectChange}
-          className={inputClass}
+          type="button"
+          onClick={() => setExercisePickerOpen((open) => !open)}
+          aria-expanded={exercisePickerOpen}
+          className={`${inputClass} flex items-center justify-between text-left`}
           autoFocus={!initialExercise}
         >
-          <option value="" disabled>
-            Pilih Latihan...
-          </option>
-          {EXERCISE_CATEGORIES.map((group) => (
-            <optgroup key={group.category} label={group.category}>
-              {group.exercises.map((name) => (
-                <option key={name} value={name}>
-                  {name}
-                </option>
-              ))}
-            </optgroup>
-          ))}
-          <option value={CUSTOM_EXERCISE_VALUE}>Lainnya (Custom)...</option>
-        </select>
-        {values.exerciseSelect === CUSTOM_EXERCISE_VALUE && (
-          <input
-            id="customExercise"
-            type="text"
-            value={values.customExercise}
-            onChange={setValue("customExercise")}
-            placeholder="Tulis nama latihanmu"
-            className={`${inputClass} mt-2`}
-          />
+          <span className={values.exerciseSelect ? "truncate text-gray-100" : "text-gray-400"}>
+            {values.exerciseSelect === CUSTOM_EXERCISE_VALUE
+              ? values.customExercise || "Nama latihan custom"
+              : values.exerciseSelect || "Tambah latihan..."}
+          </span>
+          <svg className={`h-4 w-4 shrink-0 text-gray-500 transition-transform ${exercisePickerOpen ? "rotate-180" : ""}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
+        </button>
+        {exercisePickerOpen && (
+          <div className="mt-2 rounded-xl border border-gray-700 bg-gray-950 p-2 shadow-xl">
+            <ExerciseCatalogPicker
+              selected={values.exerciseSelect && values.exerciseSelect !== CUSTOM_EXERCISE_VALUE ? [values.exerciseSelect] : []}
+              customExercises={customExercises.map((item) => item.name)}
+              onAdd={selectExercise}
+              onTutorial={setTutorialExercise}
+              onCustom={() => {
+                setValues((prev) => ({ ...prev, exerciseSelect: CUSTOM_EXERCISE_VALUE, customExercise: "" }));
+                setCustomOpen(true);
+                setExercisePickerOpen(false);
+              }}
+            />
+          </div>
+        )}
+        {customOpen && (
+          <div className="mt-2 flex gap-2">
+            <input id="customExercise" type="text" value={values.customExercise} onChange={setValue("customExercise")} placeholder="Nama latihan custom" className={inputClass} autoFocus />
+            <button type="button" onClick={() => { const name = values.customExercise.trim(); if (name) { addCustomExercise(name); selectExercise(name); } }} className="rounded-xl bg-gray-700 px-4 font-semibold hover:bg-gray-600">Tambah</button>
+          </div>
         )}
       </Field>
 
@@ -339,6 +333,7 @@ export default function WorkoutForm({
         exercise={timerExercise}
         onClose={() => setTimerOpen(false)}
       />
+      <ExerciseTutorialModal exercise={tutorialExercise} onClose={() => setTutorialExercise(undefined)} />
     </form>
   );
 }

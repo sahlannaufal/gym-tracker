@@ -4,6 +4,9 @@ import type {
   Routine,
   TrainingProgram,
   TrainingProgramStore,
+  CoachGoal,
+  CustomExercise,
+  CustomExerciseStore,
   Weekday,
   Workout,
   WorkoutInput,
@@ -38,6 +41,8 @@ export function setStorageUser(userId: string | null): void {
         PENDING_DELETE_KEY,
         ROUTINE_KEY,
         TRAINING_PROGRAM_KEY,
+        COACH_GOAL_KEY,
+        CUSTOM_EXERCISE_KEY,
       ]) {
         const legacyValue = localStorage.getItem(baseKey);
         const scopedKey = userStorageKey(baseKey, userId);
@@ -56,6 +61,8 @@ export function setStorageUser(userId: string | null): void {
 
   window.dispatchEvent(new Event("workouts-changed"));
   window.dispatchEvent(new Event("training-programs-changed"));
+  window.dispatchEvent(new Event("coach-goal-changed"));
+  window.dispatchEvent(new Event("custom-exercises-changed"));
 }
 
 const EMPTY_STORE: WorkoutStore = { version: STORE_VERSION, workouts: [] };
@@ -362,6 +369,105 @@ export function saveTrainingProgramStore(store: TrainingProgramStore, userId?: s
     JSON.stringify({ ...store, version: TRAINING_PROGRAM_VERSION }),
   );
   window.dispatchEvent(new Event("training-programs-changed"));
+}
+
+// --- Goal Coach ---
+
+const COACH_GOAL_KEY = "gym_tracker_coach_goal_v1";
+
+function normalizeCoachGoal(value: unknown): CoachGoal | null {
+  if (typeof value !== "object" || value === null) return null;
+  const raw = value as Record<string, unknown>;
+  if (
+    raw.version !== 1 ||
+    raw.type !== "build_muscle" ||
+    typeof raw.weeklySessionTarget !== "number" ||
+    !Number.isInteger(raw.weeklySessionTarget) ||
+    raw.weeklySessionTarget < 1 ||
+    raw.weeklySessionTarget > 7 ||
+    (raw.programId !== null && typeof raw.programId !== "string") ||
+    typeof raw.startedAt !== "string" ||
+    typeof raw.updatedAt !== "string"
+  ) return null;
+  return {
+    version: 1,
+    type: "build_muscle",
+    weeklySessionTarget: raw.weeklySessionTarget,
+    programId: raw.programId,
+    startedAt: raw.startedAt,
+    updatedAt: raw.updatedAt,
+  };
+}
+
+export function loadCoachGoal(userId?: string): CoachGoal | null {
+  try {
+    const key = userStorageKey(COACH_GOAL_KEY, userId);
+    if (!key) return null;
+    const raw = localStorage.getItem(key);
+    return raw ? normalizeCoachGoal(JSON.parse(raw)) : null;
+  } catch {
+    return null;
+  }
+}
+
+export function saveCoachGoal(goal: CoachGoal, userId?: string): void {
+  const key = userStorageKey(COACH_GOAL_KEY, userId);
+  if (!key) return;
+  localStorage.setItem(key, JSON.stringify(goal));
+  window.dispatchEvent(new Event("coach-goal-changed"));
+}
+
+// --- Daftar latihan custom per akun ---
+
+const CUSTOM_EXERCISE_KEY = "gym_tracker_custom_exercises_v1";
+
+function emptyCustomExerciseStore(): CustomExerciseStore {
+  return { version: 1, exercises: [] };
+}
+
+function normalizeCustomExercise(value: unknown): CustomExercise | null {
+  if (typeof value !== "object" || value === null) return null;
+  const raw = value as Record<string, unknown>;
+  if (
+    typeof raw.id !== "string" || !raw.id ||
+    typeof raw.name !== "string" || !raw.name.trim() ||
+    typeof raw.createdAt !== "string" || typeof raw.updatedAt !== "string"
+  ) return null;
+  return { id: raw.id, name: raw.name.trim(), createdAt: raw.createdAt, updatedAt: raw.updatedAt };
+}
+
+function normalizeCustomExerciseStore(value: unknown): CustomExerciseStore {
+  if (typeof value !== "object" || value === null) return emptyCustomExerciseStore();
+  const raw = value as Record<string, unknown>;
+  const uniqueNames = new Set<string>();
+  const exercises = (Array.isArray(raw.exercises) ? raw.exercises : [])
+    .map(normalizeCustomExercise)
+    .filter((item): item is CustomExercise => {
+      if (!item) return false;
+      const key = item.name.toLocaleLowerCase();
+      if (uniqueNames.has(key)) return false;
+      uniqueNames.add(key);
+      return true;
+    });
+  return { version: 1, exercises, updatedAt: typeof raw.updatedAt === "string" ? raw.updatedAt : undefined };
+}
+
+export function loadCustomExerciseStore(userId?: string): CustomExerciseStore {
+  try {
+    const key = userStorageKey(CUSTOM_EXERCISE_KEY, userId);
+    if (!key) return emptyCustomExerciseStore();
+    const raw = localStorage.getItem(key);
+    return raw ? normalizeCustomExerciseStore(JSON.parse(raw)) : emptyCustomExerciseStore();
+  } catch {
+    return emptyCustomExerciseStore();
+  }
+}
+
+export function saveCustomExerciseStore(store: CustomExerciseStore, userId?: string): void {
+  const key = userStorageKey(CUSTOM_EXERCISE_KEY, userId);
+  if (!key) return;
+  localStorage.setItem(key, JSON.stringify({ ...store, version: 1 }));
+  window.dispatchEvent(new Event("custom-exercises-changed"));
 }
 
 // --- Preferensi floating rest timer ---

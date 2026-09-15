@@ -39,6 +39,8 @@ Aplikasi web sederhana (MVP) untuk mencatat dan memantau progres latihan beban (
 - Floating rest timer yang konsisten pada quick-log dan form tambah workout.
 - Tutorial gerakan untuk latihan bawaan dengan animasi yang dimuat saat diminta.
 - Riwayat pengukuran dan summary komposisi tubuh untuk pengguna yang login.
+- Coach opsional untuk goal membangun massa otot dan target frekuensi latihan mingguan.
+- Daftar latihan custom per akun yang dapat dipakai ulang pada pencatatan workout dan editor program.
 - Google Analytics 4 untuk page-view production.
 - Mixpanel Analytics production-only untuk funnel autentikasi, penggunaan workout, progres, dan sinkronisasi.
 - Penyimpanan data LocalStorage.
@@ -70,7 +72,7 @@ Aplikasi web sederhana (MVP) untuk mencatat dan memantau progres latihan beban (
 ### F2. Form Pencatatan Workout
 
 - Field input:
-  - **Nama Latihan** — dropdown dari `EXERCISE_CATEGORIES` (`lib/constants/exercises.ts`), dikelompokkan `<optgroup>` per grup otot (Chest, Back, Legs, Shoulders, Arms, Core) + opsi "Lainnya (Custom)" yang memunculkan text input untuk nama di luar daftar. *Required*.
+  - **Nama Latihan** — memakai picker katalog yang sama dengan editor Program: pencarian, filter bagian tubuh/equipment, infinite scroll, bagian **Latihan Saya** untuk nama custom milik akun, tombol Tutorial, serta opsi **Latihan custom** yang memunculkan text input. *Required*.
   - **Beban/Weight (kg)** — number, *required*, > 0.
   - **Repetisi** — number, *required*, > 0.
   - **Set** — number, *required*, > 0.
@@ -220,6 +222,21 @@ Aplikasi web sederhana (MVP) untuk mencatat dan memantau progres latihan beban (
 - Tautan hanya tersedia di footer landing page, tidak ditampilkan di login atau Profil. Informasi mencakup penggunaan akun, batas tutorial/perhitungan kesehatan, penyimpanan lokal/cloud, Supabase/Google/ExerciseDB, identifikasi akun pada Mixpanel, keterbatasan penghapusan, serta perubahan layanan.
 - Aplikasi belum mencatat persetujuan ketentuan atau menyediakan kontrol persetujuan analitik. Halaman ini tidak menggantikan kebijakan privasi lengkap. Identitas pengelola dan kontak perlu dikonfirmasi pemilik sebelum publikasi.
 
+### F17. Coach Goal (Iterasi 1)
+
+- Dashboard menyediakan tombol kecil **Coach** di sisi kanan judul. Coach tidak muncul sebagai onboarding wajib; pengguna yang tidak mengaktifkannya tetap memakai seluruh fungsi aplikasi seperti biasa.
+- Menekan tombol membuka bottom sheet. Pada iterasi ini hanya tersedia goal **Bangun massa otot**, target latihan 1–7 kali per minggu (number input dengan tombol minus/plus), dan pilihan program latihan opsional. Jika program belum dipilih, goal tetap aktif dan UI memberi tahu bahwa program dapat diatur kemudian.
+- Satu akun hanya memiliki satu goal Coach aktif. Menekan tombol Coach setelah aktif membuka sheet yang sama untuk mengubah target frekuensi atau program.
+- Goal disimpan offline-first dalam LocalStorage per akun (`gym_tracker_coach_goal_v1_<user_id>`) dan disinkronkan last-write-wins melalui tabel `coach_goals` (`0004_coach_goals.sql`).
+- Iterasi ini belum menghasilkan rekomendasi progressive overload, mengubah program otomatis, memberi saran nutrisi/medis, maupun mengklaim kenaikan massa otot. Modul rekomendasi dibuat setelah alur aktivasi Coach tervalidasi.
+
+### F18. Daftar Latihan Custom
+
+- Nama yang dimasukkan melalui **Lainnya (Custom)** pada form workout otomatis disimpan ke daftar latihan custom pemilik akun. Nama custom yang dibuat dari editor Program juga masuk daftar yang sama.
+- Form workout menampilkan daftar tersebut dalam optgroup **Latihan Saya**. Editor Program menampilkannya di bagian atas picker latihan sehingga dapat dipakai kembali tanpa mengetik ulang.
+- Nama dinormalisasi dengan trim dan tidak boleh duplikat tanpa membedakan huruf besar/kecil. Menghapus fitur ini di iterasi berikutnya tidak boleh menghapus histori workout maupun exercise yang sudah ada di program.
+- Daftar disimpan offline-first dalam `gym_tracker_custom_exercises_v1_<user_id>` dan disinkronkan sebagai satu dokumen last-write-wins melalui tabel `custom_exercise_libraries` (`0005_custom_exercises.sql`).
+
 ## 7. Data Model
 
 ```json
@@ -247,6 +264,36 @@ Aplikasi web sederhana (MVP) untuk mencatat dan memantau progres latihan beban (
 - **updatedAt:** timestamp terakhir diubah (untuk merge sinkronisasi, last-write-wins).
 
 Riwayat komposisi tubuh menggunakan model `BodyMeasurement`: `id`, `weightKg`, `heightCm`, `bodyFatPercentage?`, `muscleMassKg?`, `measuredAt`, `createdAt`, dan `updatedAt`. Cache lokal dipisahkan per akun dengan key `gym_tracker_body_measurements_v1_<user_id>`.
+
+```json
+// localStorage["gym_tracker_coach_goal_v1_<user_id>"]
+{
+  "version": 1,
+  "type": "build_muscle",
+  "weeklySessionTarget": 3,
+  "programId": "p_1700000000000_abc123",
+  "startedAt": "2026-09-14T09:30:00.000Z",
+  "updatedAt": "2026-09-14T09:30:00.000Z"
+}
+```
+
+- `programId` bernilai `null` jika pengguna memilih **Atur nanti**.
+
+```json
+// localStorage["gym_tracker_custom_exercises_v1_<user_id>"]
+{
+  "version": 1,
+  "exercises": [
+    {
+      "id": "ce_1700000000000_abc123",
+      "name": "Cable Fly Rendah",
+      "createdAt": "2026-09-15T09:30:00.000Z",
+      "updatedAt": "2026-09-15T09:30:00.000Z"
+    }
+  ],
+  "updatedAt": "2026-09-15T09:30:00.000Z"
+}
+```
 
 > **Sinkronisasi:** workout direpresentasikan di tabel `workouts`. Program dan jadwal tanggal disimpan pada kolom JSONB tabel `routine` (migration `0003_training_programs.sql`). Kolom `updated_at`/`program_updated_at` di DB ↔ `updatedAt` di client.
 

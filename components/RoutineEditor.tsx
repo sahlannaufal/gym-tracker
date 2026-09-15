@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useTrainingPrograms } from "@/lib/useTrainingPrograms";
+import { useCustomExercises } from "@/lib/useCustomExercises";
 import type { TrainingProgram } from "@/lib/types";
 import ExerciseCatalogPicker from "./ExerciseCatalogPicker";
 import ExerciseTutorialModal from "./ExerciseTutorialModal";
@@ -14,10 +15,14 @@ function ProgramForm({
   initial,
   onSave,
   onCancel,
+  customExercises,
+  onAddCustomExercise,
 }: {
   initial?: TrainingProgram;
   onSave: (name: string, exercises: string[]) => void;
   onCancel: () => void;
+  customExercises: string[];
+  onAddCustomExercise: (name: string) => void;
 }) {
   const [name, setName] = useState(initial?.name ?? "");
   const [exercises, setExercises] = useState(initial?.exercises ?? []);
@@ -116,13 +121,14 @@ function ProgramForm({
                 setCustomOpen(true);
                 setExercisePickerOpen(false);
               }}
+              customExercises={customExercises}
             />
           </div>
         )}
         {customOpen && (
           <div className="mt-2 flex gap-2">
             <input value={customName} onChange={(event) => setCustomName(event.target.value)} placeholder="Nama latihan custom" className={fieldClass} />
-            <button type="button" onClick={() => { const value = customName.trim(); if (value) addExercise(value); setCustomName(""); setCustomOpen(false); }} className="rounded-xl bg-gray-700 px-4 font-semibold hover:bg-gray-600">Tambah</button>
+            <button type="button" onClick={() => { const value = customName.trim(); if (value) { onAddCustomExercise(value); addExercise(value); } setCustomName(""); setCustomOpen(false); }} className="rounded-xl bg-gray-700 px-4 font-semibold hover:bg-gray-600">Tambah</button>
           </div>
         )}
       </div>
@@ -142,6 +148,7 @@ function ProgramForm({
 
 export default function RoutineEditor() {
   const { store, addProgram, updateProgram, deleteProgram } = useTrainingPrograms();
+  const { customExercises, addCustomExercise } = useCustomExercises();
   const [editingId, setEditingId] = useState<string | "new" | null>(null);
   const [expandedProgramIds, setExpandedProgramIds] = useState<Set<string>>(new Set());
   const [tutorialExercise, setTutorialExercise] = useState<string>();
@@ -173,6 +180,8 @@ export default function RoutineEditor() {
         <ProgramForm
           key={editingId}
           initial={editing}
+          customExercises={customExercises.map((item) => item.name)}
+          onAddCustomExercise={addCustomExercise}
           onCancel={() => setEditingId(null)}
           onSave={(name, exercises) => {
             if (editing) updateProgram(editing.id, name, exercises);
