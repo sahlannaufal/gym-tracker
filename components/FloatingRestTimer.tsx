@@ -63,22 +63,42 @@ export default function FloatingRestTimer({
   const [running, setRunning] = useState(true);
   const [muted, setMuted] = useState(() => loadRestMuted());
   const signaledRef = useRef(false);
+  const endsAtRef = useRef<number | null>(null);
+
+  const remainingFromDeadline = () => {
+    if (endsAtRef.current === null) return remaining;
+    return Math.max(0, Math.ceil((endsAtRef.current - Date.now()) / 1000));
+  };
+
+  const startCountdown = (seconds: number) => {
+    endsAtRef.current = Date.now() + seconds * 1000;
+    setRemaining(seconds);
+    setRunning(true);
+  };
 
   useEffect(() => {
     if (!open) return;
     const duration = loadRestSeconds();
     setTotal(duration);
-    setRemaining(duration);
-    setRunning(true);
+    startCountdown(duration);
     signaledRef.current = false;
   }, [open, restartKey]);
 
   useEffect(() => {
     if (!open || !running || remaining <= 0) return;
-    const interval = window.setInterval(() => {
-      setRemaining((current) => Math.max(0, current - 1));
-    }, 1000);
-    return () => window.clearInterval(interval);
+    // Browser menahan setInterval saat tab/PWA berada di background. Sisa waktu
+    // selalu dihitung dari deadline nyata agar kembali akurat saat aktif lagi.
+    const updateRemaining = () => setRemaining(remainingFromDeadline());
+    updateRemaining();
+    const interval = window.setInterval(updateRemaining, 1000);
+    const onVisibilityChange = () => {
+      if (!document.hidden) updateRemaining();
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => {
+      window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
   }, [open, running, remaining]);
 
   useEffect(() => {
@@ -92,8 +112,10 @@ export default function FloatingRestTimer({
 
   const adjustDuration = (delta: number) => {
     const nextTotal = clampSeconds(total + delta);
+    const nextRemaining = clampSeconds(remainingFromDeadline() + delta);
     setTotal(nextTotal);
-    setRemaining((current) => clampSeconds(current + delta));
+    setRemaining(nextRemaining);
+    if (running) endsAtRef.current = Date.now() + nextRemaining * 1000;
     saveRestSeconds(nextTotal);
   };
 
@@ -141,11 +163,17 @@ export default function FloatingRestTimer({
           type="button"
           onClick={() => {
             if (finished) {
-              setRemaining(total);
+              startCountdown(total);
               signaledRef.current = false;
-              setRunning(true);
             } else {
-              setRunning((current) => !current);
+              if (running) {
+                const pausedRemaining = remainingFromDeadline();
+                endsAtRef.current = null;
+                setRemaining(pausedRemaining);
+                setRunning(false);
+              } else {
+                startCountdown(remaining);
+              }
             }
           }}
           className="flex h-10 w-10 items-center justify-center rounded-full bg-lime-400 text-gray-950 hover:bg-lime-300"

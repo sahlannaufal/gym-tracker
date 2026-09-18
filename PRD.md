@@ -145,6 +145,7 @@ Aplikasi web sederhana (MVP) untuk mencatat dan memantau progres latihan beban (
 - **Durasi dapat diubah** dengan stepper `-30s`/`+30s`; **default 60 detik**. Pilihan tersimpan di LocalStorage (`gym_tracker_rest_seconds_v1`) dan dipakai sebagai default berikutnya.
 - Kontrol: **Jeda/Lanjut**, ulangi setelah selesai, **Lewati** untuk menutup panel, dan toggle **Suara Nyala/Mati** (`gym_tracker_rest_muted_v1`).
 - Saat selesai, timer memberikan notifikasi **beep via Web Audio API** + **vibrasi** kecuali muted. Form tetap terbuka agar pengguna dapat mencatat set berikutnya atau kembali melalui navigasi aplikasi.
+- Countdown memakai deadline waktu nyata, bukan sekadar pengurangan per callback interval. Jadi saat tab/PWA berada di background, sisa waktu dihitung ulang ketika aplikasi dibuka atau aktif kembali.
 - Timer berjalan penuh di client (tidak ada request jaringan), aman untuk mode offline/PWA.
 - Pada form inline **Latihan Hari Ini**, timer yang sama dimulai manual melalui tombol **"Mulai Istirahat"** di dalam kartu latihan. Timer tetap terlihat saat collapse ditutup atau latihan lain dibuka; memulai timer dari latihan lain akan mereset timer aktif menggunakan durasi preferensi terakhir.
 
@@ -225,8 +226,11 @@ Aplikasi web sederhana (MVP) untuk mencatat dan memantau progres latihan beban (
 ### F17. Coach Goal (Iterasi 1)
 
 - Dashboard menyediakan tombol kecil **Coach** di sisi kanan judul. Coach tidak muncul sebagai onboarding wajib; pengguna yang tidak mengaktifkannya tetap memakai seluruh fungsi aplikasi seperti biasa.
-- Menekan tombol membuka bottom sheet. Pada iterasi ini hanya tersedia goal **Bangun massa otot**, target latihan 1–7 kali per minggu (number input dengan tombol minus/plus), dan pilihan program latihan opsional. Jika program belum dipilih, goal tetap aktif dan UI memberi tahu bahwa program dapat diatur kemudian.
-- Satu akun hanya memiliki satu goal Coach aktif. Menekan tombol Coach setelah aktif membuka sheet yang sama untuk mengubah target frekuensi atau program.
+- Menekan tombol membuka onboarding bottom sheet empat tahap: **tujuan** (saat ini hanya **Bangun massa otot** dengan fokus Full Body, Dada, Punggung, Bahu, Lengan, atau Kaki), **pengalaman latihan** (baru mulai/sudah pernah/berpengalaman), **jadwal & peralatan** (target 1–7 sesi per minggu, durasi ideal 30/45/60+ menit, dan akses peralatan), lalu **keselamatan & persetujuan**.
+- Program latihan bukan input onboarding. Tahap kelima menampilkan rotasi program reusable yang disusun deterministik dari target, fokus, pengalaman, frekuensi, durasi, dan peralatan. Pengguna meninjau daftar latihan lalu harus menekan **Gunakan Program** sebelum seluruh rotasi dibuat. Program yang disetujui dapat diedit melalui editor Program; jadwal tanggal tetap dipilih pengguna dari halaman Latihan Hari Ini.
+- Split rekomendasi: 1 sesi = Full Body; 2 sesi = Upper/Lower (atau Fokus A/B); 3 sesi = Full Body A/B/C untuk pemula atau Push/Pull/Legs untuk pengguna yang sudah pernah latihan; 4 sesi = Upper/Lower A/B; 5 sesi = Upper/Lower + Fokus (atau Push/Pull/Legs); 6 sesi = Push/Pull/Legs A/B. Target 7 sesi dibatasi menjadi 6 sesi latihan agar tetap menyisakan satu hari pemulihan. Untuk fokus otot tertentu, split ≤3 sesi memunculkan sesi fokus dua kali bila memungkinkan.
+- Safety mengharuskan konfirmasi usia 18+, deklarasi ada/tidaknya pembatasan cedera/kondisi/tenaga profesional, serta persetujuan bahwa Coach memberi panduan umum dan bukan layanan medis. Jawaban “Ya” menampilkan arahan konsultasi profesional sebelum menaikkan intensitas; detail diagnosis tidak diminta atau disimpan.
+- Satu akun hanya memiliki satu goal Coach aktif. Menekan tombol Coach setelah aktif membuka onboarding yang sama untuk memperbarui profil maupun target.
 - Goal disimpan offline-first dalam LocalStorage per akun (`gym_tracker_coach_goal_v1_<user_id>`) dan disinkronkan last-write-wins melalui tabel `coach_goals` (`0004_coach_goals.sql`).
 - Iterasi ini belum menghasilkan rekomendasi progressive overload, mengubah program otomatis, memberi saran nutrisi/medis, maupun mengklaim kenaikan massa otot. Modul rekomendasi dibuat setelah alur aktivasi Coach tervalidasi.
 
@@ -270,14 +274,22 @@ Riwayat komposisi tubuh menggunakan model `BodyMeasurement`: `id`, `weightKg`, `
 {
   "version": 1,
   "type": "build_muscle",
+  "focus": "chest",
   "weeklySessionTarget": 3,
-  "programId": "p_1700000000000_abc123",
+  "sessionDurationMinutes": 45,
+  "programId": null,
+  "programIds": [],
+  "trainingExperience": "beginner",
+  "equipmentAccess": "full_gym",
+  "isAdultConfirmed": true,
+  "healthRestrictionDeclared": false,
+  "safetyAcknowledgedAt": "2026-09-15T09:30:00.000Z",
   "startedAt": "2026-09-14T09:30:00.000Z",
   "updatedAt": "2026-09-14T09:30:00.000Z"
 }
 ```
 
-- `programId` bernilai `null` jika pengguna memilih **Atur nanti**.
+- `programId` dipertahankan untuk kompatibilitas data awal dan menunjuk program pertama rotasi; `programIds` menyimpan seluruh program yang disetujui dari rekomendasi Coach.
 
 ```json
 // localStorage["gym_tracker_custom_exercises_v1_<user_id>"]
