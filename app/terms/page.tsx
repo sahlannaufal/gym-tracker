@@ -48,6 +48,10 @@ const sections = [
     title: "10. Pembaruan ketentuan",
     text: "Perubahan ketentuan akan ditampilkan pada halaman ini beserta tanggal pembaruannya. Periksa kembali halaman ini untuk memahami ketentuan terbaru. Pemberitahuan ini bukan pengganti persetujuan terpisah apabila persetujuan tersebut diwajibkan untuk suatu pemrosesan data.",
   },
+  {
+    title: "11. Kontak",
+    text: "Untuk pertanyaan terkait privasi atau permintaan mengenai data pribadi, hubungi pengelola Abadikan Gym melalui gabutintech@gmail.com.",
+  },
 ];
 
 export default function TermsPage() {
@@ -71,6 +75,7 @@ export default function TermsPage() {
       <footer className="mt-10 flex flex-wrap gap-5 border-t border-gray-800 pt-6 text-sm text-lime-400">
         <Link href={`${APP_ORIGIN}/login`} className="hover:underline">Masuk / Daftar</Link>
         <Link href={MARKETING_ORIGIN} className="hover:underline">Tentang Abadikan Gym</Link>
+        <Link href="/privacy" className="hover:underline">Kebijakan Privasi</Link>
       </footer>
     </main>
   );

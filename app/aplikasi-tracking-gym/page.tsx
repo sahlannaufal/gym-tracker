@@ -178,6 +178,7 @@ export default function MarketingPage() {
       <footer className="border-t border-gray-800 px-5 py-8 text-center text-sm text-gray-500 sm:px-8">
         <Link href="/blog" className="mb-3 inline-block text-gray-300 hover:text-lime-400">Baca Blog</Link>
         <Link href="/terms" className="mb-3 ml-5 inline-block text-gray-300 hover:text-lime-400">Syarat &amp; Ketentuan</Link>
+        <Link href="/privacy" className="mb-3 ml-5 inline-block text-gray-300 hover:text-lime-400">Kebijakan Privasi</Link>
         <p>© {new Date().getFullYear()} Abadikan Gym. Catat dan pantau progres latihanmu.</p>
       </footer>
       </MarketingScrollReveal>

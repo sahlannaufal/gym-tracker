@@ -18,7 +18,7 @@ const APP_ROUTE_PREFIXES = [
 ];
 
 // Rute marketing yang boleh hidup di domain marketing selain landing/blog.
-const MARKETING_PATHS = new Set(["/aplikasi-tracking-gym", "/terms"]);
+const MARKETING_PATHS = new Set(["/aplikasi-tracking-gym", "/terms", "/privacy"]);
 
 function normalizeHost(host: string): string {
   return host.replace(/:\d+$/, "").toLowerCase();
@@ -44,7 +44,7 @@ export function proxy(request: NextRequest) {
       return NextResponse.rewrite(url);
     }
     // Rute aplikasi diarahkan ke gym.abadikan.com; aset/marketing path lain
-    // (blog, terms, _next, icons, data, dist) dilayani lokal.
+    // (blog, terms, privacy, _next, icons, data, dist) dilayani lokal.
     if (APP_ROUTE_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`))) {
       return NextResponse.redirect(`${APP_ORIGIN}${pathname}${search}`, 301);
     }
@@ -58,7 +58,7 @@ export function proxy(request: NextRequest) {
     if (pathname === "/aplikasi-tracking-gym") {
       return NextResponse.redirect(MARKETING_ORIGIN, 301);
     }
-    if (pathname === "/blog" || pathname.startsWith("/blog/") || pathname === "/terms") {
+    if (pathname === "/blog" || pathname.startsWith("/blog/") || pathname === "/terms" || pathname === "/privacy") {
       return NextResponse.redirect(`${MARKETING_ORIGIN}${pathname}${search}`, 301);
     }
   }

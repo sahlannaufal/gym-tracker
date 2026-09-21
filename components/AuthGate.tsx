@@ -28,6 +28,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
     (typeof window !== "undefined" && isMarketingHostname(window.location.hostname));
   const isIndexablePublicPath =
     pathname === "/terms" ||
+    pathname === "/privacy" ||
     pathname === "/aplikasi-tracking-gym" ||
     pathname === "/blog" ||
     pathname.startsWith("/blog/");

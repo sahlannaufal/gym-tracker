@@ -5,7 +5,7 @@ export default function robots(): MetadataRoute.Robots {
   return {
     rules: {
       userAgent: "*",
-      allow: ["/aplikasi-tracking-gym", "/blog", "/blog/", "/terms"],
+      allow: ["/aplikasi-tracking-gym", "/blog", "/blog/", "/terms", "/privacy"],
       disallow: ["/account", "/auth/", "/forgot-password", "/progress", "/today", "/workout/"],
     },
     sitemap: `${MARKETING_ORIGIN}/sitemap.xml`,

@@ -13,7 +13,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const isMarketingHost = useIsMarketingHost();
 
-  if (isMarketingHost || isMarketingPath(pathname) || pathname === "/terms") {
+  if (isMarketingHost || isMarketingPath(pathname) || pathname === "/terms" || pathname === "/privacy") {
     return <div className="min-h-screen">{children}</div>;
   }
 

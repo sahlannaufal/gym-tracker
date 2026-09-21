@@ -26,7 +26,9 @@ export default function BlogLayout({ children }: { children: React.ReactNode }) 
       </header>
       <main>{children}</main>
       <footer className="border-t border-gray-800 px-5 py-8 text-center text-sm text-gray-500">
-        © {new Date().getFullYear()} Abadikan Gym
+        <Link href="/terms" className="mr-5 text-gray-300 hover:text-lime-400">Syarat &amp; Ketentuan</Link>
+        <Link href="/privacy" className="text-gray-300 hover:text-lime-400">Kebijakan Privasi</Link>
+        <p className="mt-3">© {new Date().getFullYear()} Abadikan Gym</p>
       </footer>
     </div>
   );
