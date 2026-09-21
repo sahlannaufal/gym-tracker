@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Fragment } from "react";
+import BlogInArticleAd from "@/components/BlogInArticleAd";
 import TrackedBlogLink from "@/components/TrackedBlogLink";
 import { BLOG_POSTS, getBlogPost } from "@/lib/blog";
 import { MARKETING_ORIGIN } from "@/lib/site";
@@ -56,18 +58,21 @@ export default async function BlogPostPage({ params }: Props) {
       </header>
 
       <div className="space-y-10 py-10">
-        {post.sections.map((section) => (
-          <section key={section.heading}>
-            <h2 className="text-2xl font-bold tracking-tight text-gray-100">{section.heading}</h2>
-            <div className="mt-4 space-y-4 text-base leading-8 text-gray-300">
-              {section.paragraphs.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}
-            </div>
-            {section.bullets && (
-              <ul className="mt-4 list-disc space-y-2 pl-6 leading-7 text-gray-300">
-                {section.bullets.map((item) => <li key={item}>{item}</li>)}
-              </ul>
-            )}
-          </section>
+        {post.sections.map((section, index) => (
+          <Fragment key={section.heading}>
+            <section>
+              <h2 className="text-2xl font-bold tracking-tight text-gray-100">{section.heading}</h2>
+              <div className="mt-4 space-y-4 text-base leading-8 text-gray-300">
+                {section.paragraphs.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}
+              </div>
+              {section.bullets && (
+                <ul className="mt-4 list-disc space-y-2 pl-6 leading-7 text-gray-300">
+                  {section.bullets.map((item) => <li key={item}>{item}</li>)}
+                </ul>
+              )}
+            </section>
+            {index === 1 && <BlogInArticleAd />}
+          </Fragment>
         ))}
       </div>
 

@@ -33,15 +33,19 @@ const sections = [
     text: "Versi production menggunakan Google Analytics untuk mencatat kunjungan halaman, termasuk alamat halaman dan parameter URL. Mixpanel, jika diaktifkan, mencatat aktivitas fitur, autentikasi, instalasi, dan sinkronisasi untuk memahami penggunaan aplikasi. Profil Mixpanel dihubungkan dengan ID akun dan email; nama serta peran dapat disertakan jika tersedia. Layanan analitik menggunakan penyimpanan browser dan dapat memproses informasi perangkat serta jaringan. Karena itu, penggunaan aplikasi tidak sepenuhnya anonim.",
   },
   {
-    title: "7. Menghapus data dan berhenti menggunakan layanan",
+    title: "7. Iklan pada blog",
+    text: "Blog publik dapat menampilkan iklan Google AdSense. Google dan mitranya dapat memproses informasi perangkat, jaringan, serta menggunakan cookie atau penyimpanan browser untuk penayangan dan pengukuran iklan sesuai pilihan persetujuan dan kebijakan mereka. Iklan tidak dimuat pada halaman pencatatan latihan, program, timer, progres, autentikasi, atau data akun; data latihan dan pengukuran tubuh tidak dibagikan untuk personalisasi iklan.",
+  },
+  {
+    title: "8. Menghapus data dan berhenti menggunakan layanan",
     text: "Anda dapat menghapus entri latihan, program, dan pengukuran melalui fitur yang tersedia. Penghapusan data cloud membutuhkan koneksi dan sinkronisasi yang berhasil. Keluar dari akun atau menghapus data browser tidak menghapus akun maupun seluruh salinan cloud dan analitik. Saat ini belum tersedia tombol penghapusan akun, ekspor seluruh data, atau penghapusan profil analitik mandiri dalam aplikasi.",
   },
   {
-    title: "8. Ketersediaan dan perubahan layanan",
+    title: "9. Ketersediaan dan perubahan layanan",
     text: "Layanan dapat mengalami gangguan, kesalahan, atau perubahan fitur. Penyimpanan dan sinkronisasi tidak menjamin data selalu dapat dipulihkan. Simpan salinan terpisah untuk catatan yang penting bagi Anda. Ketentuan ini tidak dimaksudkan untuk menghapus hak pengguna atau kewajiban pengelola yang diberikan oleh hukum yang berlaku.",
   },
   {
-    title: "9. Pembaruan ketentuan",
+    title: "10. Pembaruan ketentuan",
     text: "Perubahan ketentuan akan ditampilkan pada halaman ini beserta tanggal pembaruannya. Periksa kembali halaman ini untuk memahami ketentuan terbaru. Pemberitahuan ini bukan pengganti persetujuan terpisah apabila persetujuan tersebut diwajibkan untuk suatu pemrosesan data.",
   },
 ];

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import TrackedMarketingLink from "@/components/TrackedMarketingLink";
+import MarketingScrollReveal from "@/components/MarketingScrollReveal";
 
 const pageUrl = "https://abadikan.com/";
 
@@ -72,6 +73,7 @@ export default function MarketingPage() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData).replace(/</g, "\\u003c") }}
       />
 
+      <MarketingScrollReveal>
       <header className="border-b border-gray-800/80">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-4 sm:px-8">
           <Link href="/" className="flex items-center gap-3 font-bold">
@@ -97,7 +99,7 @@ export default function MarketingPage() {
 
       <section className="relative px-5 py-20 sm:px-8 sm:py-28">
         <div className="pointer-events-none absolute left-1/2 top-0 h-80 w-80 -translate-x-1/2 rounded-full bg-lime-400/10 blur-3xl" />
-        <div className="relative mx-auto max-w-4xl text-center">
+        <div className="marketing-hero-intro relative mx-auto max-w-4xl text-center">
           <p className="text-sm font-bold uppercase tracking-[0.2em] text-lime-400">Gym Progress Tracker</p>
           <h1 className="mt-5 text-4xl font-black leading-tight tracking-tight sm:text-6xl">
             Catat latihan. Pantau progres. <span className="text-lime-400">Jadi lebih kuat.</span>
@@ -118,13 +120,18 @@ export default function MarketingPage() {
 
       <section id="fitur" className="border-y border-gray-800 bg-gray-900/30 px-5 py-20 sm:px-8">
         <div className="mx-auto max-w-6xl">
-          <div className="max-w-2xl">
+          <div className="max-w-2xl" data-scroll-reveal>
             <p className="text-sm font-bold uppercase tracking-wider text-lime-400">Fitur utama</p>
             <h2 className="mt-3 text-3xl font-black tracking-tight sm:text-4xl">Semua yang dibutuhkan untuk mengikuti progres latihan</h2>
           </div>
           <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {features.map((feature, index) => (
-              <article key={feature.title} className="rounded-2xl border border-gray-800 bg-gray-950/70 p-6">
+              <article
+                key={feature.title}
+                data-scroll-reveal
+                style={{ "--reveal-delay": `${index * 70}ms` } as React.CSSProperties}
+                className="rounded-2xl border border-gray-800 bg-gray-950/70 p-6"
+              >
                 <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-lime-400/15 text-sm font-black text-lime-400">
                   {String(index + 1).padStart(2, "0")}
                 </span>
@@ -138,13 +145,18 @@ export default function MarketingPage() {
 
       <section className="px-5 py-20 sm:px-8">
         <div className="mx-auto grid max-w-6xl gap-10 lg:grid-cols-2 lg:items-center">
-          <div>
+          <div data-scroll-reveal>
             <p className="text-sm font-bold uppercase tracking-wider text-lime-400">Cara kerja</p>
             <h2 className="mt-3 text-3xl font-black tracking-tight sm:text-4xl">Mulai dalam tiga langkah sederhana</h2>
           </div>
           <ol className="space-y-4">
             {["Buat akun gratis dengan email atau Google.", "Susun program dan mulai mencatat latihan.", "Lihat riwayat serta perkembangan performamu."].map((step, index) => (
-              <li key={step} className="flex gap-4 rounded-2xl border border-gray-800 p-5">
+              <li
+                key={step}
+                data-scroll-reveal
+                style={{ "--reveal-delay": `${(index + 1) * 90}ms` } as React.CSSProperties}
+                className="flex gap-4 rounded-2xl border border-gray-800 p-5"
+              >
                 <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-lime-400 font-black text-gray-950">{index + 1}</span>
                 <p className="pt-1 text-gray-300">{step}</p>
               </li>
@@ -154,7 +166,7 @@ export default function MarketingPage() {
       </section>
 
       <section className="px-5 pb-20 sm:px-8">
-        <div className="mx-auto max-w-4xl rounded-3xl bg-lime-400 px-6 py-12 text-center text-gray-950 sm:px-12">
+        <div data-scroll-reveal className="mx-auto max-w-4xl rounded-3xl bg-lime-400 px-6 py-12 text-center text-gray-950 sm:px-12">
           <h2 className="text-3xl font-black tracking-tight">Siap mengabadikan progresmu?</h2>
           <p className="mx-auto mt-3 max-w-xl text-gray-800">Mulai catat latihan hari ini dan lihat seberapa jauh perkembanganmu.</p>
           <TrackedMarketingLink href="/login" ctaName="footer_start" leadsToAuth className="mt-7 inline-block rounded-xl bg-gray-950 px-6 py-3.5 font-bold text-white hover:bg-gray-900">
@@ -168,6 +180,7 @@ export default function MarketingPage() {
         <Link href="/terms" className="mb-3 ml-5 inline-block text-gray-300 hover:text-lime-400">Syarat &amp; Ketentuan</Link>
         <p>© {new Date().getFullYear()} Abadikan Gym. Catat dan pantau progres latihanmu.</p>
       </footer>
+      </MarketingScrollReveal>
     </div>
   );
 }

@@ -9,13 +9,12 @@ export function isMarketingHostname(hostname: string): boolean {
   return hostname === MARKETING_HOST || hostname === `www.${MARKETING_HOST}`;
 }
 
-// Alamat /login yang memuat atribusi marketing lintas subdomain. Pada
-// production arahkan ke app (gym.abadikan.com); non-production dipakai untuk
-// development localhost agar alur auth tetap berjalan satu origin.
+// Alamat /login yang memuat atribusi marketing lintas subdomain. Nilai ini
+// sengaja tidak membaca `window` karena helper dipanggil saat SSR dan render
+// client; URL relatif pada development tetap satu origin tanpa hydration mismatch.
 function getAuthBaseUrl(): string {
   if (process.env.NODE_ENV === "production") return APP_ORIGIN;
-  if (typeof window === "undefined") return APP_ORIGIN;
-  return window.location.origin;
+  return "";
 }
 
 export function buildAuthUrl(ctaName: string, source: MarketingSource): string {

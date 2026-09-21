@@ -6,15 +6,15 @@ const contentSecurityPolicyReportOnly = [
   "object-src 'none'",
   "frame-ancestors 'none'",
   "form-action 'self'",
-  "script-src 'self' 'unsafe-inline' https://www.googletagmanager.com",
+  "script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://pagead2.googlesyndication.com",
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob: https://static.exercisedb.dev https://www.google-analytics.com https://*.google-analytics.com",
+  "img-src 'self' data: blob: https://static.exercisedb.dev https://www.google-analytics.com https://*.google-analytics.com https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://tpc.googlesyndication.com",
   "font-src 'self' data:",
-  "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api-js.mixpanel.com https://www.google-analytics.com https://*.google-analytics.com https://www.googletagmanager.com",
+  "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api-js.mixpanel.com https://www.google-analytics.com https://*.google-analytics.com https://www.googletagmanager.com https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net",
   "worker-src 'self' blob:",
   "manifest-src 'self'",
   "media-src 'self'",
-  "frame-src 'self' https://accounts.google.com",
+  "frame-src 'self' https://accounts.google.com https://googleads.g.doubleclick.net https://tpc.googlesyndication.com",
 ].join("; ");
 
 const securityHeaders = [

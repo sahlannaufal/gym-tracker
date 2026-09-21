@@ -28,6 +28,9 @@ export const metadata: Metadata = {
     shortcut: "/icons/icon.svg",
     apple: "/icons/apple-touch-icon.png",
   },
+  other: {
+    "google-adsense-account": "ca-pub-9272067329159734",
+  },
 };
 
 export const viewport: Viewport = {
