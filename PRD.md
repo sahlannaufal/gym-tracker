@@ -95,7 +95,7 @@ Aplikasi web sederhana (MVP) untuk mencatat dan memantau progres latihan beban (
 
 - Bagian "Grafik" dari halaman **Progres** (`/progress`) menjadi tab pertama dan tampilan default, diikuti tab "Riwayat". View tetap menampilkan judul "Grafik Progress", sedangkan label visual "Pilih Latihan" di atas dropdown dihilangkan; nama aksesibel tetap tersedia melalui `aria-label`.
 - Line chart sederhana: sumbu X = tanggal, sumbu Y = beban (kg).
-- Dapat dipilih per nama latihan (dropdown "Pilih Latihan"); grafik kosong sebelum memilih latihan.
+- Dapat dipilih dari katalog latihan yang sama dengan editor Program: pencarian, filter bagian tubuh/equipment, infinite scroll, daftar Latihan Saya, dan tombol Tutorial; mode Grafik tidak menyediakan aksi membuat latihan custom. Grafik kosong sebelum memilih latihan; pilihan yang belum memiliki catatan menampilkan empty state yang jelas.
 - Data yang diplot: beban maksimum per tanggal untuk latihan terpilih (jika ada beberapa set dalam sehari, pakai nilai terbesar).
 - Nama latihan tidak diulang di dalam kartu grafik karena sudah terlihat pada dropdown; keterangan "Beban maksimum per sesi" ditempatkan sebagai informasi di bawah grafik.
 - Setelah latihan dipilih, ringkasan Max Beban, Total Volume, dan Total Sesi ditampilkan sebagai tiga kartu ringkas berukuran kecil.
@@ -213,7 +213,7 @@ Aplikasi web sederhana (MVP) untuk mencatat dan memantau progres latihan beban (
 ### F15. Blog SEO
 
 - Blog publik tersedia di `/blog` dan artikel statis di `/blog/[slug]`, dapat diakses tanpa autentikasi serta tidak menampilkan bottom navigation/FAB aplikasi.
-- Enam artikel awal membahas pencatatan progres gym, progressive overload, program pemula, waktu istirahat antar set, membaca grafik progres, dan konsistensi latihan. Seluruh konten menggunakan bahasa Indonesia dan memiliki internal link ke artikel lain serta CTA menuju aplikasi.
+- Tujuh artikel awal membahas pencatatan progres gym, progressive overload, program pemula, latihan full body tiga kali seminggu, waktu istirahat antar set, membaca grafik progres, dan konsistensi latihan. Seluruh konten menggunakan bahasa Indonesia dan memiliki internal link ke artikel lain serta CTA menuju aplikasi.
 - Setiap artikel memiliki metadata title/description/keywords, canonical production, Open Graph Article, structured data `Article`, dan static params. Index blog dan semua artikel dicantumkan di sitemap serta diizinkan oleh robots.txt.
 - Landing page marketing menautkan Blog melalui header dan footer. Mixpanel mencatat `Marketing Site Viewed` untuk landing, index blog, dan artikel; `Blog Article Opened` membawa slug artikel, sementara klik kartu/tautan artikel dan CTA autentikasi dicatat terpisah tanpa mengirim isi artikel. CTA blog menyimpan attribution maksimal dua jam agar autentikasi berikutnya membawa `entry_source: blog` dan `blog_cta`.
 - Google AdSense memakai publisher ID `ca-pub-9272067329159734` dan skrip hanya dimuat pada layout Blog di production. File `public/ads.txt` menerbitkan deklarasi publisher Google di `/ads.txt`. Satu unit in-article responsif (`ad-slot` `9468524348`) tampil setelah dua section awal setiap artikel blog, dengan label “Iklan”; kegagalan pengisian seperti ad blocker tidak mengganggu artikel. Tidak memakai Auto Ads atau unit iklan pada dashboard, pencatatan workout, program, timer, progres, autentikasi, maupun data akun.

@@ -3,8 +3,11 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useWorkouts } from "@/lib/useWorkouts";
+import { useCustomExercises } from "@/lib/useCustomExercises";
 import { formatDateShort } from "@/lib/format";
 import { trackEvent } from "@/lib/analytics";
+import ExerciseCatalogPicker from "./ExerciseCatalogPicker";
+import ExerciseTutorialModal from "./ExerciseTutorialModal";
 
 const W = 320;
 const H = 200;
@@ -29,7 +32,10 @@ function Summary({
 
 export default function Progress() {
   const { workouts, isLoaded } = useWorkouts();
+  const { customExercises } = useCustomExercises();
   const [selected, setSelected] = useState<string | null>(null);
+  const [exercisePickerOpen, setExercisePickerOpen] = useState(false);
+  const [tutorialExercise, setTutorialExercise] = useState<string>();
   const lastTrackedExercise = useRef<string | null>(null);
 
   useEffect(() => {
@@ -72,7 +78,6 @@ export default function Progress() {
     );
   }
 
-  const exercises = [...new Set(workouts.map((w) => w.exercise))].sort();
   const current = selected;
 
   const maxWeightByDate = new Map<string, number>();
@@ -115,23 +120,40 @@ export default function Progress() {
     <section className="space-y-6">
       <h1 className="text-2xl font-bold">Grafik Progress</h1>
 
-      <div className="max-w-xs">
-        <select
-          id="exerciseSelect"
+      <div className="max-w-md">
+        <button
+          type="button"
           aria-label="Pilih latihan untuk grafik"
-          value={selected ?? ""}
-          onChange={(e) => setSelected(e.target.value)}
-          className="w-full rounded-xl border border-gray-700 bg-gray-900 px-4 py-2.5 text-gray-100 focus:border-lime-400 focus:outline-none focus:ring-1 focus:ring-lime-400"
+          aria-expanded={exercisePickerOpen}
+          onClick={() => setExercisePickerOpen((open) => !open)}
+          className="flex w-full items-center justify-between rounded-xl border border-gray-700 bg-gray-900 px-4 py-2.5 text-left text-gray-100 focus:border-lime-400 focus:outline-none focus:ring-1 focus:ring-lime-400"
         >
-          <option value="" disabled>
-            Pilih Latihan...
-          </option>
-          {exercises.map((name) => (
-            <option key={name} value={name}>
-              {name}
-            </option>
-          ))}
-        </select>
+          <span className={current ? "truncate" : "text-gray-400"}>{current ?? "Pilih Latihan..."}</span>
+          <svg
+            className={`ml-3 h-4 w-4 shrink-0 text-gray-500 transition-transform ${exercisePickerOpen ? "rotate-180" : ""}`}
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            aria-hidden="true"
+          >
+            <path d="m6 9 6 6 6-6" />
+          </svg>
+        </button>
+        {exercisePickerOpen && (
+          <div className="mt-2 rounded-xl border border-gray-700 bg-gray-950 p-2 shadow-xl">
+            <ExerciseCatalogPicker
+              selected={current ? [current] : []}
+              onAdd={(exercise) => {
+                setSelected(exercise);
+                setExercisePickerOpen(false);
+              }}
+              onTutorial={setTutorialExercise}
+              customExercises={customExercises.map((item) => item.name)}
+              showCustomAction={false}
+            />
+          </div>
+        )}
       </div>
 
       {!current && (
@@ -140,7 +162,14 @@ export default function Progress() {
         </div>
       )}
 
-      {current && (
+      {current && points.length === 0 && (
+        <div className="rounded-2xl border border-dashed border-gray-700 p-8 text-center">
+          <p className="text-gray-300">Belum ada data untuk {current}.</p>
+          <p className="mt-1 text-sm text-gray-500">Catat latihan ini terlebih dahulu untuk melihat grafik.</p>
+        </div>
+      )}
+
+      {current && points.length > 0 && (
         <div className="rounded-2xl border border-gray-800 bg-gray-900/50 p-4">
           <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img">
             {gridlines.map((v) => (
@@ -200,13 +229,17 @@ export default function Progress() {
         </div>
       )}
 
-      {current && (
+      {current && points.length > 0 && (
         <div className="grid grid-cols-3 gap-2">
           <Summary label="Max Beban" value={`${maxWeight} kg`} />
           <Summary label="Total Volume" value={`${Math.round(totalVolume)} kg`} />
           <Summary label="Total Sesi" value={filtered.length} />
         </div>
       )}
+      <ExerciseTutorialModal
+        exercise={tutorialExercise}
+        onClose={() => setTutorialExercise(undefined)}
+      />
     </section>
   );
 }

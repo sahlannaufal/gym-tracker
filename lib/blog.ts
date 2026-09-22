@@ -17,6 +17,70 @@ export type BlogPost = {
 
 export const BLOG_POSTS: BlogPost[] = [
   {
+    slug: "latihan-gym-3-kali-seminggu",
+    title: "Latihan Gym 3 Kali Seminggu: Panduan Program Full Body untuk Pemula",
+    description: "Panduan menyusun latihan gym 3 kali seminggu dengan program full body yang sederhana, seimbang, dan mudah dipantau progresnya.",
+    publishedAt: "2026-09-21",
+    readingTime: "7 menit baca",
+    keywords: ["latihan gym 3 kali seminggu", "program gym 3 hari", "full body workout pemula", "jadwal gym pemula"],
+    intro: "Latihan tiga kali seminggu adalah pilihan yang realistis bagi banyak pemula. Jadwal ini memberi cukup kesempatan untuk mempelajari gerakan dasar, membangun kebiasaan, dan tetap menyediakan hari pemulihan di antara sesi.",
+    sections: [
+      {
+        heading: "Mengapa tiga kali seminggu cocok untuk pemula",
+        paragraphs: [
+          "Program yang baik adalah program yang dapat dijalankan berulang kali. Tiga sesi gym per minggu lebih mudah dipertahankan dibanding jadwal yang padat, terutama saat Anda masih menyesuaikan waktu, teknik, dan pemulihan.",
+          "Dengan pola full body, kelompok otot utama mendapat stimulus di setiap sesi tanpa perlu menghabiskan terlalu banyak waktu di gym. Anda juga memperoleh beberapa kesempatan setiap minggu untuk berlatih gerakan yang sama dan melihat perkembangannya.",
+        ],
+      },
+      {
+        heading: "Contoh jadwal latihan 3 hari",
+        paragraphs: [
+          "Pilih hari yang menyisakan setidaknya satu hari istirahat di antara sesi, misalnya Senin, Rabu, dan Jumat. Jika jadwal Anda berubah, pindahkan sesi ke hari lain tanpa perlu memulai program dari awal.",
+        ],
+        bullets: [
+          "Senin: Full body A.",
+          "Rabu: Full body B.",
+          "Jumat: Full body A, lalu gunakan B pada Senin berikutnya.",
+          "Istirahat atau aktivitas ringan pada hari di antara sesi.",
+        ],
+      },
+      {
+        heading: "Pilih gerakan utama yang sederhana",
+        paragraphs: [
+          "Setiap sesi cukup berisi satu gerakan untuk pola squat, dorong, tarik, dan hip hinge. Tambahkan satu atau dua latihan pendukung jika waktu dan energi masih cukup. Pilih variasi yang sesuai dengan alat yang tersedia dan dapat dilakukan dengan teknik stabil.",
+        ],
+        bullets: [
+          "Squat atau leg press untuk kaki.",
+          "Bench press, chest press, atau push-up untuk pola dorong.",
+          "Seated row atau lat pulldown untuk pola tarik.",
+          "Romanian deadlift atau hip thrust untuk hip hinge.",
+          "Plank, curl, atau lateral raise sebagai latihan pendukung opsional.",
+        ],
+      },
+      {
+        heading: "Atur set, repetisi, dan istirahat",
+        paragraphs: [
+          "Mulailah dengan dua hingga tiga set kerja per gerakan. Untuk banyak latihan, rentang 8–12 repetisi adalah titik awal yang praktis. Gunakan beban yang masih memungkinkan rentang gerak dan teknik tetap rapi.",
+          "Istirahat sekitar satu hingga tiga menit biasanya cukup untuk latihan umum, sementara gerakan compound yang lebih berat dapat membutuhkan waktu lebih lama. Gunakan timer sebagai pengingat, lalu sesuaikan saat napas atau teknik belum siap untuk set berikutnya.",
+        ],
+      },
+      {
+        heading: "Cara menaikkan target secara bertahap",
+        paragraphs: [
+          "Tidak perlu menaikkan beban pada setiap sesi. Coba gunakan rentang repetisi: saat semua set dapat mencapai batas atas dengan teknik baik, tambahkan beban sekecil yang tersedia dan kembali ke bagian bawah rentang repetisi.",
+          "Contohnya, bila Anda dapat melakukan tiga set chest press 12 repetisi dengan beban yang sama, naikkan sedikit beban pada sesi berikutnya. Jika repetisi kembali menjadi 8 atau 9, itu tetap bagian normal dari proses progresif.",
+        ],
+      },
+      {
+        heading: "Catat hasil agar program mudah dievaluasi",
+        paragraphs: [
+          "Catat nama latihan, beban, repetisi, set, dan tanggal segera setelah latihan. Catatan ini membantu Anda menentukan target sesi berikutnya dan membedakan variasi performa harian dari tren progres yang nyata.",
+          "Jalankan program setidaknya beberapa minggu sebelum mengubah banyak hal sekaligus. Jika gerakan terasa nyeri atau teknik tidak aman, hentikan latihan tersebut dan pertimbangkan meminta bantuan pelatih yang kompeten.",
+        ],
+      },
+    ],
+  },
+  {
     slug: "cara-mencatat-progres-gym",
     title: "Cara Mencatat Progres Gym agar Latihan Lebih Terarah",
     description: "Panduan praktis mencatat beban, repetisi, set, dan perkembangan latihan gym agar progres lebih mudah dievaluasi.",

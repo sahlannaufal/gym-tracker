@@ -11,12 +11,14 @@ export default function ExerciseCatalogPicker({
   onTutorial,
   onCustom,
   customExercises,
+  showCustomAction = true,
 }: {
   selected: string[];
   onAdd: (exercise: string) => void;
   onTutorial: (exercise: string) => void;
-  onCustom: () => void;
+  onCustom?: () => void;
   customExercises: string[];
+  showCustomAction?: boolean;
 }) {
   const [items, setItems] = useState<ExerciseCatalogItem[]>([]);
   const [query, setQuery] = useState("");
@@ -157,7 +159,9 @@ export default function ExerciseCatalogPicker({
       <p className="mt-3 border-t border-gray-800 pt-3 text-center text-xs text-gray-500" aria-live="polite">
         Menampilkan {visibleItems.length} dari {filtered.length} latihan{hasMore ? " · scroll untuk melihat lainnya" : ""}
       </p>
-      <button type="button" onClick={onCustom} className="mt-3 w-full rounded-lg border border-gray-700 px-3 py-2 text-left text-sm text-gray-300 hover:bg-gray-900">+ Latihan custom</button>
+      {showCustomAction && onCustom && (
+        <button type="button" onClick={onCustom} className="mt-3 w-full rounded-lg border border-gray-700 px-3 py-2 text-left text-sm text-gray-300 hover:bg-gray-900">+ Latihan custom</button>
+      )}
     </div>
   );
 }
