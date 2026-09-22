@@ -12,6 +12,29 @@ import ExerciseTutorialModal from "./ExerciseTutorialModal";
 const W = 320;
 const H = 200;
 const PAD = { top: 16, right: 8, bottom: 28, left: 36 };
+type DateRange = "7d" | "30d" | "3m";
+
+const DATE_RANGES: { value: DateRange; label: string }[] = [
+  { value: "7d", label: "7 Hari" },
+  { value: "30d", label: "30 Hari" },
+  { value: "3m", label: "3 Bulan" },
+];
+
+function formatLocalDate(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function getRangeStart(range: DateRange): string {
+  const start = new Date();
+  start.setHours(12, 0, 0, 0);
+  if (range === "7d") start.setDate(start.getDate() - 6);
+  if (range === "30d") start.setDate(start.getDate() - 29);
+  if (range === "3m") start.setMonth(start.getMonth() - 3);
+  return formatLocalDate(start);
+}
 
 function Summary({
   label,
@@ -30,29 +53,58 @@ function Summary({
   );
 }
 
+function DateRangeSelector({
+  value,
+  onChange,
+}: {
+  value: DateRange;
+  onChange: (range: DateRange) => void;
+}) {
+  return (
+    <div className="max-w-[50%] min-w-32">
+      <label htmlFor="chartDateRange" className="sr-only">Rentang tanggal grafik</label>
+      <select
+        id="chartDateRange"
+        aria-label="Rentang tanggal grafik"
+        value={value}
+        onChange={(event) => onChange(event.target.value as DateRange)}
+        className="w-full rounded-lg border border-gray-700 bg-gray-950 px-3 py-2 text-xs font-semibold text-gray-200 focus:border-lime-400 focus:outline-none"
+      >
+        {DATE_RANGES.map((range) => (
+          <option key={range.value} value={range.value}>{range.label}</option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
 export default function Progress() {
   const { workouts, isLoaded } = useWorkouts();
   const { customExercises } = useCustomExercises();
   const [selected, setSelected] = useState<string | null>(null);
+  const [dateRange, setDateRange] = useState<DateRange>("7d");
   const [exercisePickerOpen, setExercisePickerOpen] = useState(false);
   const [tutorialExercise, setTutorialExercise] = useState<string>();
-  const lastTrackedExercise = useRef<string | null>(null);
+  const lastTrackedView = useRef<string | null>(null);
+
+  const rangeStart = getRangeStart(dateRange);
+  const rangeEnd = formatLocalDate(new Date());
 
   useEffect(() => {
-    if (!isLoaded || !selected || lastTrackedExercise.current === selected) return;
+    const viewKey = `${selected}:${dateRange}`;
+    if (!isLoaded || !selected || lastTrackedView.current === viewKey) return;
     const dates = [...new Set(
       workouts
-        .filter((workout) => workout.exercise === selected)
+        .filter((workout) => workout.exercise === selected && workout.date >= rangeStart && workout.date <= rangeEnd)
         .map((workout) => workout.date),
     )].sort();
-    lastTrackedExercise.current = selected;
+    lastTrackedView.current = viewKey;
     trackEvent("Progress Chart Viewed", {
       exercise_name: selected,
-      date_range:
-        dates.length > 0 ? `${dates[0]}:${dates[dates.length - 1]}` : "no_data",
+      date_range: `${rangeStart}:${rangeEnd}`,
       total_data_points: dates.length,
     });
-  }, [isLoaded, selected, workouts]);
+  }, [dateRange, isLoaded, rangeEnd, rangeStart, selected, workouts]);
 
   if (!isLoaded) {
     return <p className="text-gray-500">Memuat...</p>;
@@ -81,7 +133,9 @@ export default function Progress() {
   const current = selected;
 
   const maxWeightByDate = new Map<string, number>();
-  const filtered = workouts.filter((w) => w.exercise === current);
+  const filtered = workouts.filter(
+    (w) => w.exercise === current && w.date >= rangeStart && w.date <= rangeEnd,
+  );
   for (const w of filtered) {
     const max = maxWeightByDate.get(w.date) ?? 0;
     if (w.weight > max) maxWeightByDate.set(w.date, w.weight);
@@ -115,6 +169,7 @@ export default function Progress() {
     { length: gridCount + 1 },
     (_, i) => (maxVal / gridCount) * i
   );
+  const labelStep = Math.max(1, Math.ceil(points.length / 7));
 
   return (
     <section className="space-y-6">
@@ -164,13 +219,19 @@ export default function Progress() {
 
       {current && points.length === 0 && (
         <div className="rounded-2xl border border-dashed border-gray-700 p-8 text-center">
+          <div className="mb-6 text-left">
+            <DateRangeSelector value={dateRange} onChange={setDateRange} />
+          </div>
           <p className="text-gray-300">Belum ada data untuk {current}.</p>
-          <p className="mt-1 text-sm text-gray-500">Catat latihan ini terlebih dahulu untuk melihat grafik.</p>
+          <p className="mt-1 text-sm text-gray-500">Tidak ada catatan dalam rentang tanggal yang dipilih.</p>
         </div>
       )}
 
       {current && points.length > 0 && (
         <div className="rounded-2xl border border-gray-800 bg-gray-900/50 p-4">
+          <div className="mb-4">
+            <DateRangeSelector value={dateRange} onChange={setDateRange} />
+          </div>
           <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img">
             {gridlines.map((v) => (
               <g key={v}>
@@ -206,15 +267,17 @@ export default function Progress() {
             {points.map((p, i) => (
               <g key={p[0]}>
                 <circle cx={xFor(i)} cy={yFor(p[1])} r={3.5} fill="#a3e635" />
-                <text
-                  x={xFor(i)}
-                  y={H - 8}
-                  textAnchor="middle"
-                  fontSize={10}
-                  className="fill-gray-500"
-                >
-                  {formatDateShort(p[0])}
-                </text>
+                {(i % labelStep === 0 || i === points.length - 1) && (
+                  <text
+                    x={xFor(i)}
+                    y={H - 8}
+                    textAnchor="middle"
+                    fontSize={10}
+                    className="fill-gray-500"
+                  >
+                    {formatDateShort(p[0])}
+                  </text>
+                )}
               </g>
             ))}
           </svg>

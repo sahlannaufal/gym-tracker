@@ -97,6 +97,7 @@ Aplikasi web sederhana (MVP) untuk mencatat dan memantau progres latihan beban (
 - Line chart sederhana: sumbu X = tanggal, sumbu Y = beban (kg).
 - Dapat dipilih dari katalog latihan yang sama dengan editor Program: pencarian, filter bagian tubuh/equipment, infinite scroll, daftar Latihan Saya, dan tombol Tutorial; mode Grafik tidak menyediakan aksi membuat latihan custom. Grafik kosong sebelum memilih latihan; pilihan yang belum memiliki catatan menampilkan empty state yang jelas.
 - Data yang diplot: beban maksimum per tanggal untuk latihan terpilih (jika ada beberapa set dalam sehari, pakai nilai terbesar).
+- Setelah latihan dipilih, kartu grafik memiliki selector rentang tanggal ringkas berlebar maksimal setengah section dengan pilihan **7 Hari** (default), **30 Hari**, dan **3 Bulan**; garis, ringkasan, dan event analytics hanya menggunakan data pada rentang aktif. Saat jumlah titik meningkat, label tanggal sumbu X dikurangi otomatis agar tetap terbaca.
 - Nama latihan tidak diulang di dalam kartu grafik karena sudah terlihat pada dropdown; keterangan "Beban maksimum per sesi" ditempatkan sebagai informasi di bawah grafik.
 - Setelah latihan dipilih, ringkasan Max Beban, Total Volume, dan Total Sesi ditampilkan sebagai tiga kartu ringkas berukuran kecil.
 - Tidak memerlukan library berat; boleh pakai chart library ringan (Chart.js / Recharts) atau SVG custom sesuai kebutuhan.
