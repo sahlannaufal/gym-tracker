@@ -41,6 +41,7 @@ Aplikasi web sederhana (MVP) untuk mencatat dan memantau progres latihan beban (
 - Riwayat pengukuran dan summary komposisi tubuh untuk pengguna yang login.
 - Coach opsional untuk goal membangun massa otot dan target frekuensi latihan mingguan.
 - Daftar latihan custom per akun yang dapat dipakai ulang pada pencatatan workout dan editor program.
+- Dukungan pengembang via Trakteer: kartu permanen di halaman Profil + banner tipis yang bisa ditutup di Dashboard.
 - Google Analytics 4 untuk page-view production.
 - Mixpanel Analytics production-only untuk funnel autentikasi, penggunaan workout, progres, dan sinkronisasi.
 - Penyimpanan data LocalStorage.
@@ -244,6 +245,14 @@ Aplikasi web sederhana (MVP) untuk mencatat dan memantau progres latihan beban (
 - Form workout menampilkan daftar tersebut dalam optgroup **Latihan Saya**. Editor Program menampilkannya di bagian atas picker latihan sehingga dapat dipakai kembali tanpa mengetik ulang.
 - Nama dinormalisasi dengan trim dan tidak boleh duplikat tanpa membedakan huruf besar/kecil. Menghapus fitur ini di iterasi berikutnya tidak boleh menghapus histori workout maupun exercise yang sudah ada di program.
 - Daftar disimpan offline-first dalam `gym_tracker_custom_exercises_v1_<user_id>` dan disinkronkan sebagai satu dokumen last-write-wins melalui tabel `custom_exercise_libraries` (`0005_custom_exercises.sql`).
+
+### F19. Dukungan Pengembang (Trakteer)
+
+- Pengguna dapat mendukung pengembang melalui Trakteer tanpa mengganggu alur utama aplikasi, ditempatkan di dua titik:
+  - **Kartu dukungan di halaman Profil** (`/account`, komponen `SupportCreatorCard`): tampil di semua kondisi halaman (belum login, sedang memuat, sinkronisasi belum dikonfigurasi, dan setelah login).
+  - **Banner tipis di Dashboard** (`/`, varian `banner`): muncul di bawah header dengan teks ringkas "Dukung pengembangan aplikasi", dapat ditutup. Penutupan dicatat sebagai tanggal (`YYYY-MM-DD`, key `gym_tracker_trakteer_banner_dismissed_v1`) sehingga banner tersembunyi hanya pada hari yang sama dan muncul kembali otomatis setiap hari berikutnya. Nilai legacy boolean dianggap bukan tanggal (banner tampil lagi).
+- CTA membuka `https://trakteer.id/sahlan_naufal/tip` (konstanta `TRAKTEER_URL` di `lib/support.ts`) di tab baru. Embed script Trakteer (`trbtn`) sengaja tidak dipakai agar PWA tetap offline-first tanpa script pihak ketiga.
+- Analitik Mixpanel: `Support CTA Clicked` (properti `placement`: `account`/`dashboard`, `source`: `trakteer`) dan `Support Banner Dismissed`.
 
 ## 7. Data Model
 

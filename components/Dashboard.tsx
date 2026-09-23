@@ -1,13 +1,18 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { useWorkouts } from "@/lib/useWorkouts";
 import { useTrainingPrograms } from "@/lib/useTrainingPrograms";
+import { useCoachGoal } from "@/lib/useCoachGoal";
 import type { TrainingProgramStore } from "@/lib/types";
 import { currentWeekRange, formatDateShort, todayLocalISO } from "@/lib/format";
 import { getExerciseMuscles } from "@/lib/constants/exerciseMuscles";
+import { loadTrakteerBannerDismissedDate, dismissTrakteerBanner } from "@/lib/support";
 import ActivityHeatmap from "./ActivityHeatmap";
 import MuscleBodyMap from "./MuscleBodyMap";
+import CoachSheet from "./CoachSheet";
+import SupportCreatorCard from "./SupportCreatorCard";
 
 function StatCard({ label, value }: { label: string; value: number }) {
   return (
@@ -109,7 +114,61 @@ function TodayProgramCard({ store }: { store: TrainingProgramStore | null }) {
 
 export default function Dashboard() {
   const { workouts, isLoaded } = useWorkouts();
-  const { store } = useTrainingPrograms();
+  const { store, addProgram, updateProgram } = useTrainingPrograms();
+  const { goal, saveGoal } = useCoachGoal();
+  const [coachOpen, setCoachOpen] = useState(false);
+  // null = status dismiss belum dibaca (LocalStorage baru bisa dibaca di client);
+  // banner dirender hanya setelah state diketahui agar tidak ada hydration mismatch.
+  const [supportDismissed, setSupportDismissed] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    const dismissedDate = loadTrakteerBannerDismissedDate();
+    setSupportDismissed(dismissedDate === todayLocalISO());
+  }, []);
+
+  const supportBanner = supportDismissed === false ? (
+    <SupportCreatorCard
+      placement="dashboard"
+      variant="banner"
+      onDismiss={() => {
+        // Simpan tanggal hari ini; besok banner muncul kembali otomatis.
+        setSupportDismissed(true);
+        dismissTrakteerBanner(todayLocalISO());
+      }}
+    />
+  ) : null;
+
+  const header = (
+    <div className="flex items-center justify-between gap-3">
+      <h1 className="text-2xl font-bold">Dashboard</h1>
+      <button type="button" onClick={() => setCoachOpen(true)} className={`inline-flex items-center gap-1.5 rounded-xl border px-3 py-2 text-sm font-semibold transition-colors ${goal ? "border-lime-400/40 bg-lime-400/10 text-lime-300 hover:bg-lime-400/15" : "border-gray-700 bg-gray-900/50 text-gray-300 hover:border-gray-500 hover:text-gray-100"}`}>
+        <span aria-hidden="true">✦</span> Coach
+      </button>
+    </div>
+  );
+
+  const coachSheet = (
+    <CoachSheet
+      open={coachOpen}
+      goal={goal}
+      onClose={() => setCoachOpen(false)}
+      onUseRecommendation={(input, recommendation) => {
+        const legacyIds = goal?.programId ? [goal.programId] : [];
+        const existingIds = goal?.programIds.length ? goal.programIds : legacyIds;
+        const programIds = recommendation.programs.map((draft, index) => {
+          const existing = existingIds[index]
+            ? store?.programs.find((program) => program.id === existingIds[index])
+            : undefined;
+          if (existing) {
+            updateProgram(existing.id, draft.name, draft.exercises);
+            return existing.id;
+          }
+          return addProgram(draft.name, draft.exercises).id;
+        });
+        saveGoal({ ...input, programId: programIds[0] ?? null, programIds });
+      }}
+    />
+  );
 
   if (!isLoaded) {
     return <p className="text-gray-500">Memuat...</p>;
@@ -118,7 +177,8 @@ export default function Dashboard() {
   if (workouts.length === 0) {
     return (
       <section className="space-y-4">
-        <h1 className="text-2xl font-bold">Dashboard</h1>
+        {header}
+        {supportBanner}
         <TodayProgramCard store={store} />
         <ActivityHeatmap workouts={workouts} />
         <div className="rounded-2xl border border-dashed border-gray-700 p-8 text-center">
@@ -129,6 +189,7 @@ export default function Dashboard() {
             Yuk catat latihan pertamamu sekarang.
           </p>
         </div>
+        {coachSheet}
       </section>
     );
   }
@@ -162,7 +223,9 @@ export default function Dashboard() {
   );
   return (
     <section className="space-y-6">
-      <h1 className="text-2xl font-bold">Dashboard</h1>
+      {header}
+
+      {supportBanner}
 
       <TodayProgramCard store={store} />
 
@@ -180,6 +243,7 @@ export default function Dashboard() {
           secondaryMuscles={secondaryMuscleList}
         />
       )}
+      {coachSheet}
     </section>
   );
 }

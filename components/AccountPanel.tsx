@@ -8,6 +8,7 @@ import { isSyncConfigured, supabase } from "@/lib/supabase/client";
 import { requestSync } from "@/lib/sync";
 import SyncStatus from "./SyncStatus";
 import BodyCompositionPanel from "./BodyCompositionPanel";
+import SupportCreatorCard from "./SupportCreatorCard";
 import { resetMixpanel, trackEvent } from "@/lib/analytics";
 
 export default function AccountPanel() {
@@ -29,37 +30,49 @@ export default function AccountPanel() {
 
   if (!configured) {
     return (
-      <div className="rounded-2xl border border-gray-800 bg-gray-900/50 p-5">
-        <p className="text-gray-300">Sinkronisasi belum dikonfigurasi.</p>
-        <p className="mt-1 text-sm text-gray-500">
-          Isi variabel Supabase pada `.env.local` untuk mengaktifkan akun &
-          sinkronisasi.
-        </p>
-      </div>
+      <>
+        <div className="rounded-2xl border border-gray-800 bg-gray-900/50 p-5">
+          <p className="text-gray-300">Sinkronisasi belum dikonfigurasi.</p>
+          <p className="mt-1 text-sm text-gray-500">
+            Isi variabel Supabase pada `.env.local` untuk mengaktifkan akun &
+            sinkronisasi.
+          </p>
+        </div>
+        <SupportCreatorCard placement="account" />
+      </>
     );
   }
 
   if (loading) {
-    return <p className="text-gray-500">Memuat...</p>;
+    return (
+      <>
+        <p className="text-gray-500">Memuat...</p>
+        <SupportCreatorCard placement="account" />
+      </>
+    );
   }
 
   if (!user) {
     return (
-      <div className="space-y-4 rounded-2xl border border-gray-800 bg-gray-900/50 p-5">
-        <p className="text-gray-300">
-          Kamu belum masuk. Dengan masuk, data tersinkronisasi lintas perangkat.
-        </p>
-        <p className="text-sm text-gray-500">
-          Tanpa masuk app tetap berfungsi penuh, data hanya tersimpan di
-          perangkat ini.
-        </p>
-        <Link
-          href="/login"
-          className="inline-block rounded-xl bg-lime-400 px-5 py-3 font-semibold text-gray-950 transition-colors hover:bg-lime-300"
-        >
-          Masuk / Daftar
-        </Link>
-      </div>
+      <>
+        <div className="space-y-4 rounded-2xl border border-gray-800 bg-gray-900/50 p-5">
+          <p className="text-gray-300">
+            Kamu belum masuk. Dengan masuk, data tersinkronisasi lintas
+            perangkat.
+          </p>
+          <p className="text-sm text-gray-500">
+            Tanpa masuk app tetap berfungsi penuh, data hanya tersimpan di
+            perangkat ini.
+          </p>
+          <Link
+            href="/login"
+            className="inline-block rounded-xl bg-lime-400 px-5 py-3 font-semibold text-gray-950 transition-colors hover:bg-lime-300"
+          >
+            Masuk / Daftar
+          </Link>
+        </div>
+        <SupportCreatorCard placement="account" />
+      </>
     );
   }
 
@@ -100,6 +113,8 @@ export default function AccountPanel() {
       </div>
 
       <BodyCompositionPanel userId={user.id} />
+
+      <SupportCreatorCard placement="account" />
 
       <button
         type="button"
