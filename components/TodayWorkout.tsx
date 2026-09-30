@@ -9,6 +9,7 @@ import type { Workout, WorkoutInput } from "@/lib/types";
 import FloatingRestTimer from "./FloatingRestTimer";
 import ExerciseTutorialModal from "./ExerciseTutorialModal";
 import type { WorkoutTrackingContext } from "@/lib/useWorkouts";
+import { maybeOpenMonetagDirectLink } from "@/lib/monetag";
 
 const inputClass =
   "w-full rounded-xl border border-gray-700 bg-gray-900 px-4 py-2.5 text-gray-100 " +
@@ -337,6 +338,7 @@ export default function TodayWorkout({
   const [tutorialExercise, setTutorialExercise] = useState<string>();
 
   const startRestTimer = (exercise: string) => {
+    maybeOpenMonetagDirectLink();
     setTimerExercise(exercise);
     setTimerRestartKey((current) => current + 1);
     setTimerOpen(true);
