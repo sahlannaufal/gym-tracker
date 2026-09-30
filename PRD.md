@@ -256,10 +256,10 @@ Aplikasi web sederhana (MVP) untuk mencatat dan memantau progres latihan beban (
 
 ### F20. Monetag Verification & Ads
 
-- Monetag diverifikasi memakai meta tag domain lalu vignette banner dibuka hanya saat user menekan **Mulai Istirahat** di quick-log. Implementasi harus mempertahankan service worker Serwist, offline cache, login, sinkronisasi, rest timer, dan bottom navigation yang sudah ada.
+- Monetag diverifikasi memakai meta tag domain lalu vignette banner dibuka di halaman uji publik `/monetag-test` dan juga dipicu saat user menekan **Mulai Istirahat** di quick-log. Implementasi harus mempertahankan service worker Serwist, offline cache, login, sinkronisasi, rest timer, dan bottom navigation yang sudah ada.
 - Meta tag verifikasi ditempatkan di root layout agar bisa dibaca Monetag tanpa mengubah PWA atau routing.
 - Vignette banner dijalankan hanya di production dan hanya pada hostname aplikasi `gym.abadikan.com`, bukan di domain marketing `abadikan.com`, agar landing/blog tetap bebas dari perilaku iklan tambahan.
-- Script vignette yang dipakai saat ini adalah `https://n6wxm.com/vignette.min.js` dengan `zoneId` `11926122`. Aplikasi harus mengecek cooldown 5 menit sebelum memicu script tersebut, lalu menambahkan skrip dari handler **Mulai Istirahat** agar tidak mengganggu rest timer.
+- Script vignette yang dipakai saat ini adalah `https://n6wxm.com/vignette.min.js` dengan `zoneId` `11926122`. Penjagaan cooldown 5 menit dimatikan agar script bisa dimuat setiap kali dipicu dari halaman uji publik atau tombol **Mulai Istirahat**.
 - Karena vignette memicu lewat script client-side yang dimuat on-demand, tidak diperlukan mekanisme service worker Monetag di aplikasi dan daftar CSP perlu menambahkan domain Monetag vignette yang diperlukan untuk pemuatan skrip.
 
 ## 7. Data Model

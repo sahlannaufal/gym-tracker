@@ -13,6 +13,7 @@ const PUBLIC_PATHS = new Set([
   "/auth/reset-password",
   "/~offline",
   "/aplikasi-tracking-gym",
+  "/monetag-test",
 ]);
 
 export default function AuthGate({ children }: { children: React.ReactNode }) {

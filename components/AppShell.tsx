@@ -6,7 +6,12 @@ import InstallPrompt from "./InstallPrompt";
 import { useIsMarketingHost } from "@/lib/useMarketingHost";
 
 function isMarketingPath(pathname: string): boolean {
-  return pathname === "/aplikasi-tracking-gym" || pathname === "/blog" || pathname.startsWith("/blog/");
+  return (
+    pathname === "/aplikasi-tracking-gym" ||
+    pathname === "/blog" ||
+    pathname.startsWith("/blog/") ||
+    pathname === "/monetag-test"
+  );
 }
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
