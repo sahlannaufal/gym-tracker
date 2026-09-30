@@ -209,7 +209,7 @@ Aplikasi web sederhana (MVP) untuk mencatat dan memantau progres latihan beban (
 ### F14. Security Headers & CSP
 
 - Seluruh route mengirim `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy`, `X-Frame-Options`, `Cross-Origin-Opener-Policy`, dan HSTS. Header identifikasi framework `X-Powered-By` dinonaktifkan.
-- Content Security Policy diterapkan lebih dahulu sebagai `Content-Security-Policy-Report-Only`, sehingga pelanggaran dilaporkan di console browser tetapi tidak memblokir fitur pengguna. Sumber eksternal dibatasi pada integrasi aplikasi: Supabase, Google Analytics/Tag Manager, Google AdSense, Mixpanel, Google Accounts, dan CDN GIF ExerciseDB.
+- Content Security Policy diterapkan lebih dahulu sebagai `Content-Security-Policy-Report-Only`, sehingga pelanggaran dilaporkan di console browser tetapi tidak memblokir fitur pengguna. Sumber eksternal dibatasi pada integrasi aplikasi: Supabase, Google Analytics/Tag Manager, Google AdSense, Monetag (`al5sm.com` dan `5gvci.com`), Mixpanel, Google Accounts, dan CDN GIF ExerciseDB.
 - CSP baru boleh diubah menjadi mode enforcement setelah login email/Google, sinkronisasi Supabase, analytics, tutorial GIF, manifest, dan service worker PWA lolos pengujian production tanpa pelanggaran CSP yang valid. Endpoint pengumpulan laporan belum diaktifkan pada tahap ini.
 
 ### F15. Blog SEO
@@ -253,6 +253,14 @@ Aplikasi web sederhana (MVP) untuk mencatat dan memantau progres latihan beban (
   - **Banner tipis di Dashboard** (`/`, varian `banner`): muncul di bawah header dengan teks ringkas "Dukung pengembangan aplikasi", dapat ditutup. Penutupan dicatat sebagai tanggal (`YYYY-MM-DD`, key `gym_tracker_trakteer_banner_dismissed_v1`) sehingga banner tersembunyi hanya pada hari yang sama dan muncul kembali otomatis setiap hari berikutnya. Nilai legacy boolean dianggap bukan tanggal (banner tampil lagi).
 - CTA membuka `https://trakteer.id/sahlan_naufal/tip` (konstanta `TRAKTEER_URL` di `lib/support.ts`) di tab baru. Embed script Trakteer (`trbtn`) sengaja tidak dipakai agar PWA tetap offline-first tanpa script pihak ketiga.
 - Analitik Mixpanel: `Support CTA Clicked` (properti `placement`: `account`/`dashboard`, `source`: `trakteer`) dan `Support Banner Dismissed`.
+
+### F20. Monetag Verification & Ads
+
+- Monetag diverifikasi memakai meta tag domain lalu skrip iklan dimuat hanya pada domain aplikasi produksi. Implementasi harus mempertahankan service worker Serwist, offline cache, login, sinkronisasi, rest timer, dan bottom navigation yang sudah ada.
+- Meta tag verifikasi ditempatkan di root layout agar bisa dibaca Monetag tanpa mengubah PWA atau routing.
+- Skrip Monetag dijalankan hanya di production dan hanya pada hostname aplikasi `gym.abadikan.com`, bukan di domain marketing `abadikan.com`, agar landing/blog tetap bebas dari skrip iklan tambahan.
+- Integrasi awal memakai zone script Monetag dari `al5sm.com` dengan `zoneId` yang diberikan Monetag. Jika Monetag menambah aturan frekuensi/popup/interstitial, pengaturannya tetap harus menjaga batas 5 menit, menunggu sesi simpan workout, dan tidak menimpa perilaku rest timer.
+- Karena Monetag memakai sumber eksternal tambahan, daftar CSP harus mengizinkan domain Monetag yang diperlukan tanpa mengubah kebijakan keamanan aplikasi lainnya.
 
 ## 7. Data Model
 

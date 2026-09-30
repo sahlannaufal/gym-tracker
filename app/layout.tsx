@@ -3,6 +3,7 @@ import "./globals.css";
 import SyncEngine from "@/components/SyncEngine";
 import { SerwistProvider } from "@/components/SerwistProvider";
 import GoogleAnalytics from "@/components/GoogleAnalytics";
+import MonetagAds from "@/components/MonetagAds";
 import MixpanelAnalytics from "@/components/MixpanelAnalytics";
 import packageJson from "@/package.json";
 import AuthGate from "@/components/AuthGate";
@@ -45,6 +46,7 @@ export default function RootLayout({
   const content = (
     <>
       <MixpanelAnalytics appVersion={packageJson.version} />
+      <MonetagAds />
       <SyncEngine />
       <AuthGate>
         <AppShell>{children}</AppShell>
