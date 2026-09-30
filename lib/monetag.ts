@@ -1,6 +1,7 @@
 import { isMarketingHostname } from "./site";
 
-const MONETAG_DIRECT_LINK_URL = "https://omg10.com/4/11925451";
+const MONETAG_VIGNETTE_ZONE_ID = "11926122";
+const MONETAG_SCRIPT_SRC = "https://n6wxm.com/vignette.min.js";
 const MONETAG_LAST_SHOWN_KEY = "gym_tracker_monetag_last_shown_v1";
 const MONETAG_COOLDOWN_MS = 5 * 60 * 1000;
 
@@ -31,21 +32,22 @@ function writeLastShownAt(timestamp: number): void {
   }
 }
 
-export function canShowMonetagDirectLink(now = Date.now()): boolean {
+export function canShowMonetagVignetteBanner(now = Date.now()): boolean {
   return now - readLastShownAt() >= MONETAG_COOLDOWN_MS;
 }
 
-export function maybeOpenMonetagDirectLink(): boolean {
+export function maybeShowMonetagVignetteBanner(): boolean {
   if (!canUseMonetag()) return false;
   if (isMarketingHostname(window.location.hostname)) return false;
-  if (!canShowMonetagDirectLink()) return false;
+  if (!canShowMonetagVignetteBanner()) return false;
 
-  const openedWindow = window.open(
-    MONETAG_DIRECT_LINK_URL,
-    "_blank",
-    "noopener,noreferrer",
-  );
-  if (!openedWindow) return false;
+  const root = [document.documentElement, document.body].filter(Boolean).pop();
+  if (!root) return false;
+
+  const script = document.createElement("script");
+  script.dataset.zone = MONETAG_VIGNETTE_ZONE_ID;
+  script.src = MONETAG_SCRIPT_SRC;
+  root.appendChild(script);
 
   writeLastShownAt(Date.now());
   return true;

@@ -209,7 +209,7 @@ Aplikasi web sederhana (MVP) untuk mencatat dan memantau progres latihan beban (
 ### F14. Security Headers & CSP
 
 - Seluruh route mengirim `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy`, `X-Frame-Options`, `Cross-Origin-Opener-Policy`, dan HSTS. Header identifikasi framework `X-Powered-By` dinonaktifkan.
-- Content Security Policy diterapkan lebih dahulu sebagai `Content-Security-Policy-Report-Only`, sehingga pelanggaran dilaporkan di console browser tetapi tidak memblokir fitur pengguna. Sumber eksternal dibatasi pada integrasi aplikasi: Supabase, Google Analytics/Tag Manager, Google AdSense, Mixpanel, Google Accounts, dan CDN GIF ExerciseDB.
+- Content Security Policy diterapkan lebih dahulu sebagai `Content-Security-Policy-Report-Only`, sehingga pelanggaran dilaporkan di console browser tetapi tidak memblokir fitur pengguna. Sumber eksternal dibatasi pada integrasi aplikasi: Supabase, Google Analytics/Tag Manager, Google AdSense, Monetag vignette (`n6wxm.com`), Mixpanel, Google Accounts, dan CDN GIF ExerciseDB.
 - CSP baru boleh diubah menjadi mode enforcement setelah login email/Google, sinkronisasi Supabase, analytics, tutorial GIF, manifest, dan service worker PWA lolos pengujian production tanpa pelanggaran CSP yang valid. Endpoint pengumpulan laporan belum diaktifkan pada tahap ini.
 
 ### F15. Blog SEO
@@ -256,11 +256,11 @@ Aplikasi web sederhana (MVP) untuk mencatat dan memantau progres latihan beban (
 
 ### F20. Monetag Verification & Ads
 
-- Monetag diverifikasi memakai meta tag domain lalu iklan dibuka via direct link yang dipicu setelah workout tersimpan atau saat user menekan **Mulai Istirahat** di quick-log. Implementasi harus mempertahankan service worker Serwist, offline cache, login, sinkronisasi, rest timer, dan bottom navigation yang sudah ada.
+- Monetag diverifikasi memakai meta tag domain lalu vignette banner dibuka hanya saat user menekan **Mulai Istirahat** di quick-log. Implementasi harus mempertahankan service worker Serwist, offline cache, login, sinkronisasi, rest timer, dan bottom navigation yang sudah ada.
 - Meta tag verifikasi ditempatkan di root layout agar bisa dibaca Monetag tanpa mengubah PWA atau routing.
-- Direct link Monetag dijalankan hanya di production dan hanya pada hostname aplikasi `gym.abadikan.com`, bukan di domain marketing `abadikan.com`, agar landing/blog tetap bebas dari perilaku iklan tambahan.
-- Direct link yang dipakai saat ini adalah `https://omg10.com/4/11925451`. Aplikasi harus mengecek cooldown 5 menit sebelum membuka link tersebut, lalu membuka di tab baru dari handler simpan workout maupun handler **Mulai Istirahat** agar tidak mengganggu rest timer.
-- Karena direct link membuka domain eksternal, tidak diperlukan mekanisme service worker Monetag di aplikasi dan daftar CSP tidak perlu menambahkan domain Monetag khusus untuk iklan ini.
+- Vignette banner dijalankan hanya di production dan hanya pada hostname aplikasi `gym.abadikan.com`, bukan di domain marketing `abadikan.com`, agar landing/blog tetap bebas dari perilaku iklan tambahan.
+- Script vignette yang dipakai saat ini adalah `https://n6wxm.com/vignette.min.js` dengan `zoneId` `11926122`. Aplikasi harus mengecek cooldown 5 menit sebelum memicu script tersebut, lalu menambahkan skrip dari handler **Mulai Istirahat** agar tidak mengganggu rest timer.
+- Karena vignette memicu lewat script client-side yang dimuat on-demand, tidak diperlukan mekanisme service worker Monetag di aplikasi dan daftar CSP perlu menambahkan domain Monetag vignette yang diperlukan untuk pemuatan skrip.
 
 ## 7. Data Model
 
