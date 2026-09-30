@@ -256,11 +256,12 @@ Aplikasi web sederhana (MVP) untuk mencatat dan memantau progres latihan beban (
 
 ### F20. Monetag Verification & Ads
 
-- Monetag diverifikasi memakai meta tag domain lalu vignette banner dibuka di halaman uji publik `/monetag-test` dan juga dipicu saat user menekan **Mulai Istirahat** di quick-log. Implementasi harus mempertahankan service worker Serwist, offline cache, login, sinkronisasi, rest timer, dan bottom navigation yang sudah ada.
+- Monetag diverifikasi memakai meta tag domain. Tag Vignette Banner dimuat saat aplikasi production dibuka di `gym.abadikan.com`, tetapi integrasi aplikasi hanya meminta tampilan iklan setelah workout berhasil disimpan (bersamaan dengan pembukaan rest timer dari form) atau saat user menekan **Mulai Istirahat** pada quick-log. Halaman `/monetag-test` tidak memicu iklan. Implementasi mempertahankan service worker Serwist, offline cache, login, sinkronisasi, rest timer, dan bottom navigation.
 - Meta tag verifikasi ditempatkan di root layout agar bisa dibaca Monetag tanpa mengubah PWA atau routing.
-- Vignette banner dijalankan hanya di production dan hanya pada hostname aplikasi `gym.abadikan.com`, bukan di domain marketing `abadikan.com`, agar landing/blog tetap bebas dari perilaku iklan tambahan.
-- Script vignette yang dipakai saat ini adalah `https://n6wxm.com/vignette.min.js` dengan `zoneId` `11926122`. Penjagaan cooldown 5 menit dimatikan agar script bisa dimuat setiap kali dipicu dari halaman uji publik atau tombol **Mulai Istirahat**.
-- Karena vignette memicu lewat script client-side yang dimuat on-demand, tidak diperlukan mekanisme service worker Monetag di aplikasi dan daftar CSP perlu menambahkan domain Monetag vignette yang diperlukan untuk pemuatan skrip.
+- Tag dimuat hanya di production dan hanya pada hostname aplikasi `gym.abadikan.com`, bukan domain marketing `abadikan.com`.
+- Script vignette yang dipakai adalah `https://n6wxm.com/vignette.min.js` dengan `zoneId` `11926122`. `zoneId` disematkan sebagai `data-zone`; tag dimuat satu kali dan tidak dipasang ulang setiap pemicu. Frekuensi aktual tampilan mengikuti mekanisme/cooldown Monetag.
+- Vignette Banner Monetag adalah tag visit-triggered dan dokumentasi format ini tidak menyediakan API `show_<zoneId>` untuk pemicu JS. Karena itu penampilan setelah aksi tertentu bergantung pada perilaku tag dan pengaturan zona di Monetag; jangan mengklaim pemicu terprogram apabila tag hanya dimuat.
+- Tidak diperlukan mekanisme service worker Monetag di aplikasi dan daftar CSP mencantumkan domain Monetag untuk pemuatan skrip.
 
 ## 7. Data Model
 

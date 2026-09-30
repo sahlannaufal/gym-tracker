@@ -11,6 +11,7 @@ import {
 import FloatingRestTimer from "./FloatingRestTimer";
 import ExerciseCatalogPicker from "./ExerciseCatalogPicker";
 import ExerciseTutorialModal from "./ExerciseTutorialModal";
+import { showMonetagVignette } from "@/lib/monetag";
 
 interface FormValues {
   exerciseSelect: string;
@@ -175,7 +176,7 @@ export default function WorkoutForm({
         ? values.customExercise.trim()
         : values.exerciseSelect;
     if (values.exerciseSelect === CUSTOM_EXERCISE_VALUE) addCustomExercise(exercise);
-    addWorkout(
+    const savedWorkout = addWorkout(
       {
         exercise,
         weight: Number(values.weight),
@@ -185,6 +186,8 @@ export default function WorkoutForm({
       },
       { inputMethod: "manual_form" },
     );
+    if (!savedWorkout) return;
+    showMonetagVignette();
     setTimerExercise(exercise);
     setTimerRestartKey((current) => current + 1);
     setTimerOpen(true);

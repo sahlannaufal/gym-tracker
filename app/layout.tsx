@@ -7,6 +7,7 @@ import MixpanelAnalytics from "@/components/MixpanelAnalytics";
 import packageJson from "@/package.json";
 import AuthGate from "@/components/AuthGate";
 import AppShell from "@/components/AppShell";
+import MonetagTag from "@/components/MonetagTag";
 
 export const metadata: Metadata = {
   applicationName: "Gym Progress Tracker",
@@ -45,6 +46,7 @@ export default function RootLayout({
   const content = (
     <>
       <MixpanelAnalytics appVersion={packageJson.version} />
+      <MonetagTag />
       <SyncEngine />
       <AuthGate>
         <AppShell>{children}</AppShell>
