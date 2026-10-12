@@ -18,6 +18,20 @@ export function formatDateShort(iso: string): string {
   });
 }
 
+// Format tanggal untuk tampilan publik/admin. Menerima "YYYY-MM-DD" maupun
+// ISO datetime lengkap (mis. "2026-09-11T00:00:00+00:00" dari PostgREST);
+// mengembalikan null bila nilai kosong/tidak terbaca.
+export function formatDateOrNull(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const [y, m, d] = value.slice(0, 10).split("-").map(Number);
+  if (!y || !m || !d) return null;
+  return new Date(y, m - 1, d).toLocaleDateString("id-ID", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
 export function todayLocalISO(): string {
   const now = new Date();
   return new Date(now.getTime() - now.getTimezoneOffset() * 60000)
