@@ -18,6 +18,5 @@ ayuadina.abadikan.com {
 }
 
 n8n.abadikan.com {
-    encode gzip
     reverse_proxy n8n:5678
 }
