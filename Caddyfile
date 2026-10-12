@@ -16,3 +16,8 @@ www.abadikan.com {
 ayuadina.abadikan.com {
     reverse_proxy journal-ayu:3000
 }
+
+n8n.abadikan.com {
+    encode gzip
+    reverse_proxy n8n:5678
+}
