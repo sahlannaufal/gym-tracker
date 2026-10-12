@@ -187,6 +187,8 @@ async function getUserId(): Promise<string | null> {
 
 let inFlight = false;
 let rerunRequested = false;
+let rerunUserId: string | null = null;
+let activeSyncPromise: Promise<void> | null = null;
 
 /**
  * Sinkronisasi penuh dua arah (offline-first, last-write-wins by updated_at).
@@ -202,9 +204,12 @@ export async function syncAll(userId: string): Promise<void> {
   if (inFlight) {
     // Ada perubahan baru selama sync berjalan -> jalankan sekali lagi setelah selesai.
     rerunRequested = true;
+    rerunUserId = userId;
+    await activeSyncPromise;
     return;
   }
   inFlight = true;
+  activeSyncPromise = (async () => {
   const syncStartedAt = Date.now();
   let syncedWorkoutCount = 0;
   setStatus({ state: "syncing" });
@@ -440,13 +445,18 @@ export async function syncAll(userId: string): Promise<void> {
     setStatus({ state: "error" });
   } finally {
     inFlight = false;
+    activeSyncPromise = null;
     // Jika ada permintaan sync baru selama proses berjalan, jalankan ulang
     if (rerunRequested) {
       rerunRequested = false;
+      const nextUserId = rerunUserId ?? userId;
+      rerunUserId = null;
       setStatus({ state: "syncing" });
-      void syncAll(userId).catch(() => undefined);
+      await syncAll(nextUserId);
     }
   }
+  })();
+  await activeSyncPromise;
 }
 
 /**

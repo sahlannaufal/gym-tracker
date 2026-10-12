@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { APP_ORIGIN, MARKETING_ORIGIN } from "@/lib/site";
+import { MARKETING_ORIGIN } from "@/lib/site";
+import { MarketingSiteFooter, MarketingSiteHeader } from "@/components/MarketingSiteChrome";
 
 const pageUrl = `${MARKETING_ORIGIN}/privacy`;
 
@@ -64,27 +65,27 @@ const sections = [
 
 export default function PrivacyPage() {
   return (
-    <main className="mx-auto max-w-2xl px-5 py-10 sm:py-16">
-      <Link href={MARKETING_ORIGIN} className="text-sm text-lime-400 hover:underline">Kembali ke Abadikan Gym</Link>
-      <header className="mt-6 space-y-3">
-        <p className="text-sm font-semibold text-lime-400">Abadikan Gym</p>
-        <h1 className="text-3xl font-bold">Kebijakan Privasi</h1>
-        <p className="text-sm text-gray-400">Terakhir diperbarui: 21 September 2026</p>
-        <p className="leading-relaxed text-gray-300">Penjelasan ringkas mengenai data yang diproses, alasan penggunaannya, dan pilihan Anda saat memakai Abadikan Gym.</p>
-      </header>
-      <div className="mt-8 space-y-8">
-        {sections.map(({ title, text }) => (
-          <section key={title} className="space-y-2">
-            <h2 className="text-lg font-semibold">{title}</h2>
-            <p className="text-sm leading-7 text-gray-300">{text}</p>
-          </section>
-        ))}
-      </div>
-      <footer className="mt-10 flex flex-wrap gap-5 border-t border-gray-800 pt-6 text-sm text-lime-400">
-        <Link href={`${APP_ORIGIN}/login`} className="hover:underline">Masuk / Daftar</Link>
-        <Link href="/terms" className="hover:underline">Syarat &amp; Ketentuan</Link>
-        <a href="mailto:gabutintech@gmail.com" className="hover:underline">gabutintech@gmail.com</a>
-      </footer>
-    </main>
+    <div className="marketing-site min-h-screen bg-gray-950 text-gray-100">
+      <MarketingSiteHeader />
+      <main className="marketing-legal mx-auto max-w-4xl px-5 py-12 sm:px-10 sm:py-20 lg:px-14">
+        <Link href={MARKETING_ORIGIN} className="marketing-article-back">← Kembali ke Abadikan Gym</Link>
+        <header className="marketing-legal-header mt-8">
+          <p className="marketing-editorial-kicker">INFORMASI LAYANAN</p>
+          <h1 className="marketing-editorial-title mt-5">Kebijakan Privasi</h1>
+          <p className="mt-5 text-sm text-gray-500">Terakhir diperbarui: 21 September 2026</p>
+          <p className="mt-5 max-w-2xl text-lg leading-8 text-gray-400">Penjelasan ringkas mengenai data yang diproses, alasan penggunaannya, dan pilihan Anda saat memakai Abadikan Gym.</p>
+        </header>
+        <div className="marketing-legal-sections mt-12">
+          {sections.map(({ title, text }, index) => (
+            <section key={title} className="marketing-legal-section">
+              <span className="marketing-legal-index">{String(index + 1).padStart(2, "0")}</span>
+              <div><h2>{title.replace(/^\d+\.\s*/, "")}</h2><p>{text}</p></div>
+            </section>
+          ))}
+        </div>
+        <a href="mailto:gabutintech@gmail.com" className="marketing-contact-link">Pertanyaan privasi? Hubungi gabutintech@gmail.com ↗</a>
+      </main>
+      <MarketingSiteFooter />
+    </div>
   );
 }

@@ -70,6 +70,7 @@ export function deleteBodyMeasurement(userId: string, id: string) {
   if (!pending.includes(id)) {
     localStorage.setItem(deleteKey(userId), JSON.stringify([...pending, id]));
   }
+  notifyBodyMeasurementsChanged(userId);
 }
 
 export function loadBodyMeasurementDeletes(userId: string): string[] {

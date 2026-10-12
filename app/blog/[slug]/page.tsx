@@ -1,21 +1,21 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Fragment } from "react";
 import BlogInArticleAd from "@/components/BlogInArticleAd";
 import TrackedBlogLink from "@/components/TrackedBlogLink";
-import { BLOG_POSTS, getBlogPost } from "@/lib/blog";
+import {
+  getPublishedPostBySlug,
+  getPublishedPosts,
+  splitHtmlAtThirdHeading,
+} from "@/lib/blogPosts";
 import { MARKETING_ORIGIN } from "@/lib/site";
+import { formatDateOrNull } from "@/lib/format";
 
 type Props = { params: Promise<{ slug: string }> };
 
-export function generateStaticParams() {
-  return BLOG_POSTS.map((post) => ({ slug: post.slug }));
-}
-
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
-  const post = getBlogPost(slug);
+  const post = await getPublishedPostBySlug(slug);
   if (!post) return {};
   const url = `${MARKETING_ORIGIN}/blog/${post.slug}`;
   return {
@@ -23,60 +23,68 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     description: post.description,
     keywords: post.keywords,
     alternates: { canonical: url },
-    openGraph: { type: "article", locale: "id_ID", url, siteName: "Abadikan Gym", title: post.title, description: post.description, publishedTime: post.publishedAt },
+    openGraph: {
+      type: "article",
+      locale: "id_ID",
+      url,
+      siteName: "Abadikan Gym",
+      title: post.title,
+      description: post.description,
+      publishedTime: post.published_at ?? undefined,
+      ...(post.cover_image_url ? { images: [{ url: post.cover_image_url }] } : {}),
+    },
     robots: { index: true, follow: true },
   };
 }
 
 export default async function BlogPostPage({ params }: Props) {
   const { slug } = await params;
-  const post = getBlogPost(slug);
+  const post = await getPublishedPostBySlug(slug);
   if (!post) notFound();
+
   const url = `${MARKETING_ORIGIN}/blog/${post.slug}`;
-  const related = BLOG_POSTS.filter((item) => item.slug !== post.slug).slice(0, 3);
+  const allPosts = await getPublishedPosts();
+  const related = allPosts.filter((item) => item.slug !== post.slug).slice(0, 3);
+  const [contentBefore, contentAfter] = splitHtmlAtThirdHeading(post.content_html);
   const structuredData = {
     "@context": "https://schema.org",
     "@type": "Article",
     headline: post.title,
     description: post.description,
-    datePublished: post.publishedAt,
-    dateModified: post.publishedAt,
+    datePublished: post.published_at,
+    dateModified: post.updated_at.slice(0, 10) || post.published_at,
     inLanguage: "id-ID",
     mainEntityOfPage: url,
     author: { "@type": "Organization", name: "Abadikan Gym" },
     publisher: { "@type": "Organization", name: "Abadikan Gym" },
+    ...(post.cover_image_url ? { image: post.cover_image_url } : {}),
   };
 
   return (
-    <article className="mx-auto max-w-3xl px-5 py-12 sm:px-8 sm:py-18">
+    <article className="marketing-article mx-auto max-w-4xl px-5 py-12 sm:px-8 sm:py-18">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData).replace(/</g, "\\u003c") }} />
-      <Link href="/blog" className="text-sm font-semibold text-lime-400 hover:text-lime-300">← Semua artikel</Link>
-      <header className="mt-8 border-b border-gray-800 pb-8">
-        <p className="text-sm text-gray-500">{post.readingTime}</p>
-        <h1 className="mt-3 text-3xl font-black leading-tight tracking-tight sm:text-5xl">{post.title}</h1>
-        <p className="mt-5 text-lg leading-8 text-gray-300">{post.intro}</p>
+      <Link href="/blog" className="marketing-article-back">← Semua cerita</Link>
+      <header className="marketing-article-header mt-8 border-b border-gray-800 pb-8">
+        <p className="marketing-editorial-kicker">{post.reading_time}{formatDateOrNull(post.published_at) ? ` · ${formatDateOrNull(post.published_at)}` : ""}</p>
+        <h1 className="marketing-editorial-title mt-5">{post.title}</h1>
+        {post.intro && <p className="mt-6 max-w-3xl text-lg leading-8 text-gray-300">{post.intro}</p>}
       </header>
 
-      <div className="space-y-10 py-10">
-        {post.sections.map((section, index) => (
-          <Fragment key={section.heading}>
-            <section>
-              <h2 className="text-2xl font-bold tracking-tight text-gray-100">{section.heading}</h2>
-              <div className="mt-4 space-y-4 text-base leading-8 text-gray-300">
-                {section.paragraphs.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}
-              </div>
-              {section.bullets && (
-                <ul className="mt-4 list-disc space-y-2 pl-6 leading-7 text-gray-300">
-                  {section.bullets.map((item) => <li key={item}>{item}</li>)}
-                </ul>
-              )}
-            </section>
-            {index === 1 && <BlogInArticleAd />}
-          </Fragment>
-        ))}
+      {post.cover_image_url && (
+        <img
+          src={post.cover_image_url}
+          alt=""
+          className="marketing-article-cover mt-9 w-full rounded-2xl border border-gray-800 object-cover"
+        />
+      )}
+
+      <div className="marketing-article-body py-10">
+        <div className="blog-content" dangerouslySetInnerHTML={{ __html: contentBefore }} />
+        <BlogInArticleAd />
+        {contentAfter && <div className="blog-content" dangerouslySetInnerHTML={{ __html: contentAfter }} />}
       </div>
 
-      <aside className="rounded-3xl bg-lime-400 p-7 text-gray-950 sm:p-9">
+      <aside className="marketing-article-cta rounded-3xl bg-lime-400 p-7 text-gray-950 sm:p-9">
         <h2 className="text-2xl font-black">Catat progres latihanmu</h2>
         <p className="mt-2 leading-7 text-gray-800">Simpan beban, repetisi, set, dan program latihan dalam satu tempat.</p>
         <TrackedBlogLink
@@ -89,23 +97,25 @@ export default async function BlogPostPage({ params }: Props) {
         </TrackedBlogLink>
       </aside>
 
-      <section className="mt-12 border-t border-gray-800 pt-8">
-        <h2 className="text-xl font-bold">Artikel lainnya</h2>
-        <ul className="mt-4 space-y-3">
-          {related.map((item) => (
-            <li key={item.slug}>
-              <TrackedBlogLink
-                href={`/blog/${item.slug}`}
-                articleSlug={item.slug}
-                location="related_articles"
-                className="text-gray-300 hover:text-lime-400"
-              >
-                {item.title} →
-              </TrackedBlogLink>
-            </li>
-          ))}
-        </ul>
-      </section>
+      {related.length > 0 && (
+        <section className="marketing-related mt-12 border-t border-gray-800 pt-8">
+          <h2 className="text-xl font-bold">Artikel lainnya</h2>
+          <ul className="mt-4 space-y-3">
+            {related.map((item) => (
+              <li key={item.slug}>
+                <TrackedBlogLink
+                  href={`/blog/${item.slug}`}
+                  articleSlug={item.slug}
+                  location="related_articles"
+                  className="text-gray-300 hover:text-lime-400"
+                >
+                  {item.title} →
+                </TrackedBlogLink>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
     </article>
   );
 }

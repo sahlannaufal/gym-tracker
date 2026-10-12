@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { APP_ORIGIN, MARKETING_ORIGIN } from "@/lib/site";
+import { MARKETING_ORIGIN } from "@/lib/site";
+import { MarketingSiteFooter, MarketingSiteHeader } from "@/components/MarketingSiteChrome";
 
 export const metadata: Metadata = {
   title: "Syarat & Ketentuan | Abadikan Gym",
@@ -56,27 +57,26 @@ const sections = [
 
 export default function TermsPage() {
   return (
-    <main className="mx-auto max-w-2xl px-5 py-10 sm:py-16">
-      <Link href={`${APP_ORIGIN}/account`} className="text-sm text-lime-400 hover:underline">Kembali ke Profil</Link>
-      <header className="mt-6 space-y-3">
-        <p className="text-sm font-semibold text-lime-400">Abadikan Gym</p>
-        <h1 className="text-3xl font-bold">Syarat &amp; Ketentuan</h1>
-        <p className="text-sm text-gray-400">Terakhir diperbarui: 12 September 2026</p>
-        <p className="leading-relaxed text-gray-300">Kenali cara kerja layanan dan pengelolaan data Anda sebelum mulai mencatat latihan.</p>
-      </header>
-      <div className="mt-8 space-y-8">
-        {sections.map(({ title, text }) => (
-          <section key={title} className="space-y-2">
-            <h2 className="text-lg font-semibold">{title}</h2>
-            <p className="text-sm leading-7 text-gray-300">{text}</p>
-          </section>
-        ))}
-      </div>
-      <footer className="mt-10 flex flex-wrap gap-5 border-t border-gray-800 pt-6 text-sm text-lime-400">
-        <Link href={`${APP_ORIGIN}/login`} className="hover:underline">Masuk / Daftar</Link>
-        <Link href={MARKETING_ORIGIN} className="hover:underline">Tentang Abadikan Gym</Link>
-        <Link href="/privacy" className="hover:underline">Kebijakan Privasi</Link>
-      </footer>
-    </main>
+    <div className="marketing-site min-h-screen bg-gray-950 text-gray-100">
+      <MarketingSiteHeader />
+      <main className="marketing-legal mx-auto max-w-4xl px-5 py-12 sm:px-10 sm:py-20 lg:px-14">
+        <Link href="/" className="marketing-article-back">← Kembali ke Abadikan Gym</Link>
+        <header className="marketing-legal-header mt-8">
+          <p className="marketing-editorial-kicker">INFORMASI LAYANAN</p>
+          <h1 className="marketing-editorial-title mt-5">Syarat &amp; Ketentuan</h1>
+          <p className="mt-5 text-sm text-gray-500">Terakhir diperbarui: 12 September 2026</p>
+          <p className="mt-5 max-w-2xl text-lg leading-8 text-gray-400">Kenali cara kerja layanan dan pengelolaan data Anda sebelum mulai mencatat latihan.</p>
+        </header>
+        <div className="marketing-legal-sections mt-12">
+          {sections.map(({ title, text }, index) => (
+            <section key={title} className="marketing-legal-section">
+              <span className="marketing-legal-index">{String(index + 1).padStart(2, "0")}</span>
+              <div><h2>{title.replace(/^\d+\.\s*/, "")}</h2><p>{text}</p></div>
+            </section>
+          ))}
+        </div>
+      </main>
+      <MarketingSiteFooter />
+    </div>
   );
 }
