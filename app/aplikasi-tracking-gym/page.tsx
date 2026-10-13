@@ -73,7 +73,6 @@ export default function MarketingPage() {
                 <h1 className="marketing-display mt-7 max-w-3xl">Setiap repetisi punya <em>cerita.</em></h1>
                 <p className="mt-7 max-w-xl text-base leading-7 text-gray-400 sm:text-lg sm:leading-8">Abadikan Gym membantumu mengingat latihan hari ini dan melihat sejauh apa kamu sudah berkembang.</p>
                 <div className="mt-9 flex flex-wrap items-center gap-4"><TrackedMarketingLink href="/login" ctaName="hero_start" leadsToAuth className="marketing-primary-cta">Mulai gratis <span aria-hidden="true">↗</span></TrackedMarketingLink><a className="marketing-text-link" href="#cerita">Lihat cara kerjanya <span aria-hidden="true">↓</span></a></div>
-                <div className="mt-12 flex items-center gap-4 border-t border-white/10 pt-5 text-xs text-gray-500"><span className="marketing-avatars"><i>A</i><i>G</i><i>+</i></span><span>Latihanmu, tercatat rapi.<br/><b className="font-medium text-gray-300">Gratis untuk mulai.</b></span></div>
               </div>
               <div className="marketing-preview-wrap" data-scroll-reveal><div className="marketing-preview-caption"><span>PROGRES YANG TERLIHAT</span><span>01 — 03</span></div><WorkoutPreview/><div className="marketing-floating-note"><span className="marketing-note-icon">↗</span><span><small>BENCH PRESS · 8 MINGGU</small><strong>+12.5 <small>kg</small></strong></span></div></div>
             </div>

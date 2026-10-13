@@ -7,14 +7,6 @@ import {
   type SyncStatus as SyncStatusType,
 } from "@/lib/sync";
 
-const LABELS: Record<SyncStatusType["state"], string> = {
-  unconfigured: "Sinkronisasi belum diatur",
-  idle: "Belum tersinkron",
-  syncing: "Menyinkronkan...",
-  synced: "Tersinkron",
-  error: "Sinkron gagal",
-};
-
 const DOT_COLOR: Record<SyncStatusType["state"], string> = {
   unconfigured: "bg-gray-500",
   idle: "bg-amber-400",
@@ -43,38 +35,26 @@ export default function SyncStatus({
 
   useEffect(() => subscribeSyncStatus(setStatus), []);
 
-  const lastSync = formatLastSync(status.lastSync);
-
   const syncing = status.state === "syncing";
+  const label = syncing
+    ? "Menyinkronkan"
+    : status.state === "synced"
+      ? `Tersinkron${formatLastSync(status.lastSync) ? ` · ${formatLastSync(status.lastSync)}` : ""}`
+      : status.state === "error"
+        ? "Sinkronisasi gagal"
+        : status.state === "idle"
+          ? "Belum tersinkron"
+          : "Sinkronisasi belum diatur";
 
   return (
-    <div className="flex items-center justify-between gap-4 border-t border-gray-800 pt-4">
-      <div className="min-w-0">
-        <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
-          Status sinkronisasi
-        </p>
-        <p
-          className="mt-1 flex items-center gap-2 truncate text-sm text-gray-300"
-          aria-live="polite"
-        >
-          <span
-            className={`h-2 w-2 shrink-0 rounded-full ${DOT_COLOR[status.state]}`}
-            aria-hidden
-          />
-          <span className="truncate">
-            {LABELS[status.state]}
-            {lastSync && ` · ${lastSync}`}
-          </span>
-        </p>
-      </div>
-
+    <div className="shrink-0" aria-live="polite" title={label}>
       <button
         type="button"
         onClick={onSync}
         disabled={disabled || syncing}
         aria-label={syncing ? "Sedang menyinkronkan" : "Sinkronkan sekarang"}
         title={syncing ? "Sedang menyinkronkan" : "Sinkronkan sekarang"}
-        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-gray-700 text-gray-300 transition-colors hover:border-lime-400/60 hover:bg-lime-400/10 hover:text-lime-400 focus:outline-none focus:ring-2 focus:ring-lime-400/70 disabled:cursor-not-allowed disabled:opacity-50"
+        className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-gray-700 text-gray-300 transition-colors hover:border-lime-400/60 hover:bg-lime-400/10 hover:text-lime-400 focus:outline-none focus:ring-2 focus:ring-lime-400/70 disabled:cursor-not-allowed disabled:opacity-50"
       >
         <svg
           viewBox="0 0 24 24"
@@ -91,6 +71,10 @@ export default function SyncStatus({
           <path d="M5.1 9a8 8 0 0 1 13.2-3L20 7" />
           <path d="M18.9 15a8 8 0 0 1-13.2 3L4 17" />
         </svg>
+        <span
+          className={`absolute right-0.5 top-0.5 h-2.5 w-2.5 rounded-full ring-2 ring-gray-900 ${DOT_COLOR[status.state]}`}
+          aria-hidden
+        />
       </button>
     </div>
   );

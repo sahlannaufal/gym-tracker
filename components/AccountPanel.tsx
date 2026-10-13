@@ -99,17 +99,18 @@ export default function AccountPanel() {
 
   return (
     <div className="space-y-5">
-      <div className="space-y-5 rounded-2xl border border-gray-800 bg-gray-900/50 p-5">
-        <div>
+      <div className="rounded-2xl border border-gray-800 bg-gray-900/50 p-5">
+        <div className="flex items-center justify-between gap-4">
+          <div className="min-w-0">
           <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
             Akun
           </p>
           <p className="mt-1 truncate font-semibold text-gray-100">
             {user.email ?? "Pengguna terhubung"}
           </p>
+          </div>
+          <SyncStatus onSync={handleSync} disabled={syncBusy} />
         </div>
-
-        <SyncStatus onSync={handleSync} disabled={syncBusy} />
       </div>
 
       <BodyCompositionPanel userId={user.id} />
