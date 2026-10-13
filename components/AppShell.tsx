@@ -6,12 +6,12 @@ import InstallPrompt from "./InstallPrompt";
 import { useIsMarketingHost } from "@/lib/useMarketingHost";
 
 function isMarketingPath(pathname: string): boolean {
-  return (
-    pathname === "/aplikasi-tracking-gym" ||
-    pathname === "/blog" ||
-    pathname.startsWith("/blog/") ||
-    pathname === "/monetag-test"
-  );
+  return pathname === "/aplikasi-tracking-gym" || pathname === "/blog" || pathname.startsWith("/blog/");
+}
+
+// Halaman admin blog: tanpa bottom nav/FAB karena bukan bagian alur aplikasi.
+function isDashboardPath(pathname: string): boolean {
+  return pathname === "/dashboard" || pathname.startsWith("/dashboard/");
 }
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
@@ -20,6 +20,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   if (isMarketingHost || isMarketingPath(pathname) || pathname === "/terms" || pathname === "/privacy") {
     return <div className="min-h-screen">{children}</div>;
+  }
+
+  if (isDashboardPath(pathname)) {
+    return <main className="mx-auto w-full max-w-3xl px-4 pt-6 pb-16">{children}</main>;
   }
 
   return (

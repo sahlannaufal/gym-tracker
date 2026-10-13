@@ -14,6 +14,7 @@ const APP_ROUTE_PREFIXES = [
   "/account",
   "/history",
   "/routine",
+  "/dashboard",
   "/~offline",
 ];
 

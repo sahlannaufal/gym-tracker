@@ -1,8 +1,10 @@
 import type { MetadataRoute } from "next";
-import { BLOG_POSTS } from "@/lib/blog";
+import { getPublishedPosts } from "@/lib/blogPosts";
 import { MARKETING_ORIGIN } from "@/lib/site";
 
-export default function sitemap(): MetadataRoute.Sitemap {
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  const posts = await getPublishedPosts();
+
   return [
     {
       url: MARKETING_ORIGIN,
@@ -22,9 +24,9 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: "yearly",
       priority: 0.3,
     },
-    ...BLOG_POSTS.map((post) => ({
+    ...posts.map((post) => ({
       url: `${MARKETING_ORIGIN}/blog/${post.slug}`,
-      lastModified: new Date(post.publishedAt),
+      lastModified: new Date(post.published_at ?? post.updated_at),
       changeFrequency: "monthly" as const,
       priority: 0.7,
     })),
