@@ -39,11 +39,11 @@ const sections = [
   },
   {
     title: "5. Penyedia layanan pihak ketiga",
-    text: "Supabase digunakan untuk autentikasi dan penyimpanan cloud. Google dapat terlibat saat Anda memakai login Google, Google Analytics, atau iklan Google AdSense di blog. Mixpanel dapat digunakan untuk analitik penggunaan aplikasi. Tutorial gerakan memuat animasi dari CDN ExerciseDB hanya ketika tutorial dibuka. Setiap penyedia memproses data sesuai kebijakan privasinya masing-masing.",
+    text: "Supabase digunakan untuk autentikasi dan penyimpanan cloud. Google dapat terlibat saat Anda memakai login Google, Google Analytics, atau iklan Google AdSense di blog. Mixpanel dapat digunakan untuk analitik penggunaan aplikasi. Pada production, aplikasi juga mengalihkan browser ke tautan Shopee setelah lima menit penggunaan aktif; Shopee dapat menerima informasi teknis dari permintaan tersebut dan memprosesnya sesuai kebijakannya. Tautan dapat membawa atribusi referral/afiliasi; jika memenuhi ketentuan Shopee, pengelola dapat menerima komisi tanpa biaya tambahan bagi Anda. Tutorial gerakan memuat animasi dari CDN ExerciseDB hanya ketika tutorial dibuka. Setiap penyedia memproses data sesuai kebijakan privasinya masing-masing.",
   },
   {
-    title: "6. Iklan, cookie, dan pilihan persetujuan",
-    text: "Iklan Google AdSense hanya dapat tampil di artikel blog publik, bukan pada layar latihan, timer, progres, akun, atau autentikasi. Data workout dan pengukuran tubuh tidak dikirim untuk personalisasi iklan. Jika Google CMP aktif, pengunjung di wilayah yang relevan akan menerima pilihan untuk menyetujui, menolak, atau mengatur penggunaan data dan cookie untuk iklan. Anda dapat mengubah pilihan tersebut melalui pengaturan privasi dan cookie yang tersedia di situs.",
+    title: "6. Iklan, tautan Shopee, cookie, dan pilihan persetujuan",
+    text: "Iklan Google AdSense hanya dapat tampil di artikel blog publik, bukan pada layar latihan, timer, progres, akun, atau autentikasi. Data workout dan pengukuran tubuh tidak dikirim untuk personalisasi iklan. Pada halaman aplikasi production setelah login, browser diarahkan ke tautan Shopee setiap lima menit saat tab aplikasi terlihat. Jika Google CMP aktif, pengunjung di wilayah yang relevan akan menerima pilihan untuk menyetujui, menolak, atau mengatur penggunaan data dan cookie untuk iklan. Anda dapat mengubah pilihan tersebut melalui pengaturan privasi dan cookie yang tersedia di situs.",
   },
   {
     title: "7. Retensi dan penghapusan data",
@@ -72,7 +72,7 @@ export default function PrivacyPage() {
         <header className="marketing-legal-header mt-8">
           <p className="marketing-editorial-kicker">INFORMASI LAYANAN</p>
           <h1 className="marketing-editorial-title mt-5">Kebijakan Privasi</h1>
-          <p className="mt-5 text-sm text-gray-500">Terakhir diperbarui: 21 September 2026</p>
+          <p className="mt-5 text-sm text-gray-500">Terakhir diperbarui: 14 Oktober 2026</p>
           <p className="mt-5 max-w-2xl text-lg leading-8 text-gray-400">Penjelasan ringkas mengenai data yang diproses, alasan penggunaannya, dan pilihan Anda saat memakai Abadikan Gym.</p>
         </header>
         <div className="marketing-legal-sections mt-12">

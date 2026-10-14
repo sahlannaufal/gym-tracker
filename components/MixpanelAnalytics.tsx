@@ -18,7 +18,6 @@ const PAGE_NAMES: Record<string, string> = {
   "/auth/reset-password": "Buat Password Baru",
   "/~offline": "Offline",
   "/aplikasi-tracking-gym": "Landing Page Marketing",
-  "/monetag-test": "Monetag Test",
 };
 
 let appOpenedTracked = false;

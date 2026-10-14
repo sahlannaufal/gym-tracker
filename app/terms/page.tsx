@@ -27,7 +27,7 @@ const sections = [
   },
   {
     title: "5. Akun, privasi, dan layanan pihak ketiga",
-    text: "Supabase memproses autentikasi dan penyimpanan cloud. Jika menggunakan login Google, autentikasi juga melibatkan Google. Aplikasi memproses identitas akun, email, catatan latihan, program, jadwal, dan pengukuran yang Anda masukkan untuk menyediakan fitur tersebut. Animasi tutorial dimuat dari CDN ExerciseDB saat tutorial dibuka; penyedia menerima permintaan jaringan dari perangkat Anda. Masing-masing penyedia juga memiliki kebijakan privasi sendiri.",
+    text: "Supabase memproses autentikasi dan penyimpanan cloud. Jika menggunakan login Google, autentikasi juga melibatkan Google. Aplikasi memproses identitas akun, email, catatan latihan, program, jadwal, dan pengukuran yang Anda masukkan untuk menyediakan fitur tersebut. Di production, browser pada halaman aplikasi setelah login otomatis diarahkan ke tautan Shopee setiap lima menit selama tab terlihat. Tautan dapat membawa atribusi referral/afiliasi; jika memenuhi ketentuan Shopee, pengelola dapat menerima komisi tanpa biaya tambahan bagi Anda. Animasi tutorial dimuat dari CDN ExerciseDB saat tutorial dibuka; penyedia menerima permintaan jaringan dari perangkat Anda. Masing-masing penyedia juga memiliki kebijakan privasi sendiri.",
   },
   {
     title: "6. Analitik penggunaan",
@@ -64,7 +64,7 @@ export default function TermsPage() {
         <header className="marketing-legal-header mt-8">
           <p className="marketing-editorial-kicker">INFORMASI LAYANAN</p>
           <h1 className="marketing-editorial-title mt-5">Syarat &amp; Ketentuan</h1>
-          <p className="mt-5 text-sm text-gray-500">Terakhir diperbarui: 12 September 2026</p>
+          <p className="mt-5 text-sm text-gray-500">Terakhir diperbarui: 14 Oktober 2026</p>
           <p className="mt-5 max-w-2xl text-lg leading-8 text-gray-400">Kenali cara kerja layanan dan pengelolaan data Anda sebelum mulai mencatat latihan.</p>
         </header>
         <div className="marketing-legal-sections mt-12">

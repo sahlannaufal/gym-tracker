@@ -270,6 +270,13 @@ Aplikasi web sederhana (MVP) untuk mencatat dan memantau progres latihan beban (
 - Gambar (inline maupun cover) di-upload ke bucket publik `blog-images` (`lib/blogImages.ts`, maksimal 5 MB, hanya `image/*`); gambar yang di-drop/di-paste ke editor di-upload lebih dulu lalu disisipkan sebagai URL sehingga tidak ada konten base64 di database. RLS storage hanya menerima tulis dari email admin.
 - Simpan draft maupun publish dari halaman editor; publish tanpa tanggal terbit otomatis memakai hari ini. Baris baru dibuat dengan `created_at`/`updated_at` yang diperbarui pada tiap simpan.
 
+### F21. Monetisasi Shopee
+
+- Skrip, pemicu, dan metadata verifikasi Monetag dinonaktifkan; domain Monetag dihapus dari Content Security Policy. Google AdSense tetap hanya digunakan pada artikel blog publik.
+- Setelah pengguna login, browser pada seluruh route non-marketing dialihkan ke `https://s.shopee.co.id/7AeJwNLgIX` setiap lima menit saat tab terlihat, termasuk dashboard admin. Timer tidak berjalan pada landing page, blog publik, terms/privacy, login, pemulihan akun, callback autentikasi, atau halaman offline; fitur hanya aktif pada production.
+- Jika tab disembunyikan, hitung mundur berhenti dan dilanjutkan saat tab terlihat kembali. Pengalihan memakai navigasi biasa sehingga pengguna dapat kembali ke aplikasi lewat tombol Back.
+- Tautan dapat membawa atribusi referral/afiliasi sesuai konfigurasi Shopee; kebijakan privasi dan syarat layanan menjelaskan pengalihan dan kemungkinan komisi.
+
 ## 7. Data Model
 
 ```json
