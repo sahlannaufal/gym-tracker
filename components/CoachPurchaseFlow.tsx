@@ -14,6 +14,7 @@ type CoachPurchaseFlowProps = {
 };
 
 type PurchaseStep = "offer" | "checkout";
+const COACH_REGULAR_PRICE_IDR = 95_000;
 
 function CheckIcon() {
   return <svg aria-hidden="true" viewBox="0 0 20 20" fill="none" className="h-5 w-5 shrink-0 text-lime-300"><path d="m5 10 3.2 3.2L15.5 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>;
@@ -30,6 +31,10 @@ type PurchaseOrder = { id: string; status: "pending" | "paid" | "failed" | "expi
 
 function formatRupiah(amount: number): string {
   return new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(amount);
+}
+
+function RegularPriceStrike({ className = "" }: { className?: string }) {
+  return <del className={`text-xs text-gray-500 line-through ${className}`}>{formatRupiah(COACH_REGULAR_PRICE_IDR)}</del>;
 }
 
 export default function CoachPurchaseFlow({ open, onClose, onActivated, returnOrderId = null, placement = "profile" }: CoachPurchaseFlowProps) {
@@ -297,7 +302,10 @@ export default function CoachPurchaseFlow({ open, onClose, onActivated, returnOr
                 <div><p className="text-sm font-semibold text-white">Coach Personal</p><p className="mt-1 text-sm text-gray-400">Akses selamanya</p></div>
                 <span className="rounded-full border border-lime-300/20 bg-lime-300/10 px-2.5 py-1 text-[11px] font-semibold text-lime-200">Lifetime</span>
               </div>
-              <p className="mt-5 text-sm font-medium text-gray-300">{config?.amount ? formatRupiah(config.amount) : "Harga belum dikonfigurasi"}</p>
+              <div className="mt-5">
+                {config?.amount != null && config.amount < COACH_REGULAR_PRICE_IDR && <RegularPriceStrike />}
+                <p className="text-lg font-bold text-white">{config?.amount ? formatRupiah(config.amount) : "Harga belum dikonfigurasi"}</p>
+              </div>
             </div>
 
             <ul className="mt-5 space-y-3">
@@ -323,7 +331,7 @@ export default function CoachPurchaseFlow({ open, onClose, onActivated, returnOr
                 <div><p className="text-sm font-semibold text-white">Coach Personal</p><p className="mt-1 text-xs text-gray-500">Akses selamanya</p></div>
                 <span className="text-xs font-semibold text-lime-300">Digital</span>
               </div>
-              <div className="flex items-center justify-between py-4 text-sm"><span className="text-gray-400">Total pembayaran</span><span className="font-semibold text-white">{config?.amount ? formatRupiah(config.amount) : "Belum tersedia"}</span></div>
+              <div className="flex items-center justify-between gap-4 py-4 text-sm"><span className="text-gray-400">Total pembayaran</span><span className="flex flex-col items-end font-semibold text-white">{config?.amount != null && config.amount < COACH_REGULAR_PRICE_IDR && <RegularPriceStrike />}{config?.amount ? formatRupiah(config.amount) : "Belum tersedia"}</span></div>
             </div>
 
             {!orderId ? (
