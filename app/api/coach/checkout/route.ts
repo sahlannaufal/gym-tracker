@@ -15,6 +15,68 @@ function profileName(user: { user_metadata?: Record<string, unknown> }): string 
   return typeof name === "string" ? name.trim() : "";
 }
 
+type PaymentOrder = {
+  id: string;
+  status: string;
+  checkout_url: string | null;
+  expires_at: string | null;
+  paid_at: string | null;
+  provider_transaction_id: string | null;
+  amount_idr: number;
+};
+
+async function reconcilePendingOrder(
+  admin: NonNullable<ReturnType<typeof getSupabaseAdmin>>,
+  order: PaymentOrder,
+): Promise<{ status: string; activationFailed: boolean }> {
+  let status = order.status;
+  if (status === "pending" && order.expires_at && Date.parse(order.expires_at) <= Date.now()) {
+    status = "expired";
+    await admin.from("coach_payment_orders").update({ status, updated_at: new Date().toISOString() }).eq("id", order.id);
+  } else if (status === "pending" && order.provider_transaction_id) {
+    const { apiKey, apiBaseUrl } = getCoachPaymentConfig();
+    if (apiKey && apiBaseUrl) {
+      try {
+        const response = await fetch(`${apiBaseUrl}/transactions/${encodeURIComponent(order.provider_transaction_id)}`, {
+          headers: { Authorization: `Bearer ${apiKey}` },
+          cache: "no-store",
+          signal: AbortSignal.timeout(12_000),
+        });
+        const payload: unknown = response.ok ? await response.json() : null;
+        const transaction = isRecord(payload) && isRecord(payload.data) ? payload.data : null;
+        // Mayar's transaction-detail response may return extraData as null.
+        // The saved transaction ID binds this verified payment to this order.
+        if (
+          typeof transaction?.status === "string" && transaction.status.toLowerCase() === "paid" &&
+          transaction.id === order.provider_transaction_id &&
+          Number(transaction.amount) === order.amount_idr
+        ) {
+          const { error: activationError } = await admin.rpc("activate_coach_payment_order", {
+            p_order_id: order.id,
+            p_provider_customer_id: typeof transaction.customerId === "string"
+              ? transaction.customerId
+              : isRecord(transaction.customer) && typeof transaction.customer.id === "string"
+                ? transaction.customer.id
+                : null,
+          });
+          if (activationError) {
+            console.error("[coach-checkout] entitlement activation failed", {
+              orderId: order.id,
+              code: activationError.code,
+              message: activationError.message,
+            });
+            return { status, activationFailed: true };
+          }
+          status = "paid";
+        }
+      } catch {
+        // A delayed provider response should not prevent the pending state from being shown.
+      }
+    }
+  }
+  return { status, activationFailed: false };
+}
+
 export async function GET(request: Request) {
   const user = await getRequestUser(request);
   if (!user) return NextResponse.json({ error: "auth_required" }, { status: 401 });
@@ -32,44 +94,12 @@ export async function GET(request: Request) {
       .maybeSingle();
     if (error) return NextResponse.json({ error: "order_unavailable" }, { status: 503 });
     if (!order) return NextResponse.json({ error: "order_not_found" }, { status: 404 });
-    let status = order.status;
-    if (status === "pending" && order.expires_at && Date.parse(order.expires_at) <= Date.now()) {
-      status = "expired";
-      await admin.from("coach_payment_orders").update({ status, updated_at: new Date().toISOString() }).eq("id", order.id);
-    } else if (status === "pending" && order.provider_transaction_id) {
-      const { apiKey, apiBaseUrl } = getCoachPaymentConfig();
-      if (apiKey && apiBaseUrl) {
-        try {
-          const response = await fetch(`${apiBaseUrl}/transactions/${encodeURIComponent(order.provider_transaction_id)}`, {
-            headers: { Authorization: `Bearer ${apiKey}` },
-            cache: "no-store",
-            signal: AbortSignal.timeout(12_000),
-          });
-          const payload: unknown = response.ok ? await response.json() : null;
-          const transaction = isRecord(payload) && isRecord(payload.data) ? payload.data : null;
-          const extraData = transaction && isRecord(transaction.extraData) ? transaction.extraData : null;
-          if (
-            typeof transaction?.status === "string" && transaction.status.toLowerCase() === "paid" &&
-            transaction.id === order.provider_transaction_id &&
-            Number(transaction.amount) === order.amount_idr &&
-            extraData?.orderId === order.id
-          ) {
-            const { error: activationError } = await admin.rpc("activate_coach_payment_order", {
-              p_order_id: order.id,
-              p_provider_customer_id: typeof transaction.customerId === "string" ? transaction.customerId : null,
-            });
-            if (activationError) return NextResponse.json({ error: "entitlement_activation_failed" }, { status: 503 });
-            status = "paid";
-          }
-        } catch {
-          // A delayed provider response should not prevent the pending state from being shown.
-        }
-      }
-    }
+    const reconciled = await reconcilePendingOrder(admin, order);
+    if (reconciled.activationFailed) return NextResponse.json({ error: "entitlement_activation_failed" }, { status: 503 });
     return NextResponse.json({
       order: {
         id: order.id,
-        status,
+        status: reconciled.status,
         checkout_url: order.checkout_url,
         expires_at: order.expires_at,
         paid_at: order.paid_at,
@@ -78,11 +108,33 @@ export async function GET(request: Request) {
   }
 
   const { amount, apiKey, apiBaseUrl } = getCoachPaymentConfig();
+  const { data: pendingOrder, error: pendingOrderError } = await admin
+    .from("coach_payment_orders")
+    .select("id,status,checkout_url,expires_at,paid_at,provider_transaction_id,amount_idr")
+    .eq("user_id", user.id)
+    .in("status", ["pending", "paid"])
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (pendingOrderError) return NextResponse.json({ error: "order_lookup_failed" }, { status: 503 });
+  let restoredOrder = null;
+  if (pendingOrder) {
+    const reconciled = await reconcilePendingOrder(admin, pendingOrder);
+    if (reconciled.activationFailed) return NextResponse.json({ error: "entitlement_activation_failed" }, { status: 503 });
+    restoredOrder = {
+      id: pendingOrder.id,
+      status: reconciled.status,
+      checkout_url: pendingOrder.checkout_url,
+      expires_at: pendingOrder.expires_at,
+      paid_at: pendingOrder.paid_at,
+    };
+  }
   return NextResponse.json({
     available: Boolean(amount && apiKey && apiBaseUrl),
     amount,
     customerName: profileName(user),
     customerEmail: user.email ?? "",
+    pendingOrder: restoredOrder,
   }, { headers: { "Cache-Control": "private, no-store" } });
 }
 

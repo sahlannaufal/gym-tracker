@@ -108,16 +108,22 @@ export async function POST(request: Request) {
   if (transaction.id !== order.provider_transaction_id) {
     return NextResponse.json({ error: "transaction_id_mismatch" }, { status: 400 });
   }
-  const transactionExtraData = isRecord(transaction.extraData) ? transaction.extraData : null;
-  if (!transactionExtraData || transactionExtraData.orderId !== order.id) {
-    return NextResponse.json({ error: "transaction_order_mismatch" }, { status: 400 });
-  }
-
   const { error: activationError } = await admin.rpc("activate_coach_payment_order", {
     p_order_id: order.id,
-    p_provider_customer_id: typeof transaction.customerId === "string" ? transaction.customerId : null,
+    p_provider_customer_id: typeof transaction.customerId === "string"
+      ? transaction.customerId
+      : isRecord(transaction.customer) && typeof transaction.customer.id === "string"
+        ? transaction.customer.id
+        : null,
   });
-  if (activationError) return NextResponse.json({ error: "entitlement_activation_failed" }, { status: 503 });
+  if (activationError) {
+    console.error("[mayar-webhook] entitlement activation failed", {
+      orderId: order.id,
+      code: activationError.code,
+      message: activationError.message,
+    });
+    return NextResponse.json({ error: "entitlement_activation_failed" }, { status: 503 });
+  }
 
   return NextResponse.json({ received: true, activated: true });
 }

@@ -17,7 +17,13 @@ function CheckIcon() {
   return <svg aria-hidden="true" viewBox="0 0 20 20" fill="none" className="h-5 w-5 shrink-0 text-lime-300"><path d="m5 10 3.2 3.2L15.5 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>;
 }
 
-type PurchaseConfig = { available: boolean; amount: number | null; customerName: string; customerEmail: string };
+type PurchaseConfig = {
+  available: boolean;
+  amount: number | null;
+  customerName: string;
+  customerEmail: string;
+  pendingOrder?: PurchaseOrder | null;
+};
 type PurchaseOrder = { id: string; status: "pending" | "paid" | "failed" | "expired"; checkout_url: string | null };
 
 function formatRupiah(amount: number): string {
@@ -57,12 +63,25 @@ export default function CoachPurchaseFlow({ open, onClose, onActivated, returnOr
       const result = await response.json() as PurchaseConfig;
       if (active) {
         setConfig(result);
-        setName(result.customerName);
+        setName((currentName) => currentName || result.customerName);
+        if (result.pendingOrder) {
+          const pendingOrder = result.pendingOrder;
+          setStep("checkout");
+          setOrderId(pendingOrder.id);
+          setCheckoutUrl(pendingOrder.checkout_url ?? "");
+          setOrderStatus(pendingOrder.status);
+          if (pendingOrder.status === "paid") {
+            setStatusMessage("Pembayaran berhasil. Coach Personal aktif selamanya.");
+            onActivated?.();
+          } else if (pendingOrder.status === "pending") {
+            setStatusMessage("Pesanan sebelumnya ditemukan. Lanjutkan pembayaran atau periksa statusnya.");
+          }
+        }
       }
     }
     void loadConfig();
     return () => { active = false; };
-  }, [open, returnOrderId]);
+  }, [open, returnOrderId, onActivated]);
 
   async function createInvoice() {
     if (!supabase || !config?.available) return;
@@ -138,23 +157,33 @@ export default function CoachPurchaseFlow({ open, onClose, onActivated, returnOr
       try {
         const { data: { session } } = await client!.auth.getSession();
         if (!session?.access_token) throw new Error("Sesi login berakhir. Silakan masuk kembali.");
-        const response = await fetch(`/api/coach/checkout?orderId=${encodeURIComponent(orderIdToCheck!)}`, {
-          headers: { Authorization: `Bearer ${session.access_token}` },
-          cache: "no-store",
-        });
-        const result = await response.json() as { order?: PurchaseOrder };
-        if (!response.ok || !result.order) throw new Error("Status pembayaran belum dapat diperiksa.");
-        if (!active) return;
-        setOrderStatus(result.order.status);
-        setCheckoutUrl(result.order.checkout_url ?? "");
-        if (result.order.status === "paid") {
-          setStatusMessage("Pembayaran berhasil. Coach Personal aktif selamanya.");
-          onActivated?.();
-        } else if (result.order.status === "pending") {
-          setStatusMessage("Pembayaran masih menunggu. Jika sudah membayar, tunggu sebentar lalu periksa kembali.");
-        } else {
-          setStatusMessage("");
-          setMessage("Invoice tidak lagi aktif. Tutup lalu mulai transaksi baru.");
+        // The customer may return before Mayar's transaction API has updated
+        // or before its webhook has arrived. Recheck briefly so the common
+        // successful-payment path activates without asking for a manual click.
+        for (let attempt = 0; attempt < 5; attempt += 1) {
+          const response = await fetch(`/api/coach/checkout?orderId=${encodeURIComponent(orderIdToCheck!)}`, {
+            headers: { Authorization: `Bearer ${session.access_token}` },
+            cache: "no-store",
+          });
+          const result = await response.json() as { order?: PurchaseOrder };
+          if (!response.ok || !result.order) throw new Error("Status pembayaran belum dapat diperiksa.");
+          if (!active) return;
+          setOrderStatus(result.order.status);
+          setCheckoutUrl(result.order.checkout_url ?? "");
+          if (result.order.status === "paid") {
+            setStatusMessage("Pembayaran berhasil. Coach Personal aktif selamanya.");
+            onActivated?.();
+            return;
+          }
+          if (result.order.status !== "pending") {
+            setStatusMessage("");
+            setMessage("Invoice tidak lagi aktif. Tutup lalu mulai transaksi baru.");
+            return;
+          }
+          setStatusMessage(attempt < 4
+            ? "Pembayaran diterima. Sedang menunggu konfirmasi dari Mayar…"
+            : "Pembayaran masih menunggu. Jika sudah membayar, coba periksa status kembali.");
+          if (attempt < 4) await new Promise((resolve) => window.setTimeout(resolve, 3000));
         }
       } catch (error) {
         if (active) {
@@ -210,10 +239,10 @@ export default function CoachPurchaseFlow({ open, onClose, onActivated, returnOr
           </div>
         ) : (
           <div className="p-5 sm:p-6">
-            <button type="button" onClick={() => setStep("offer")} className="inline-flex items-center gap-2 text-xs font-medium text-gray-400 transition hover:text-white">
+            {!orderId && <button type="button" onClick={() => setStep("offer")} className="inline-flex items-center gap-2 text-xs font-medium text-gray-400 transition hover:text-white">
               <svg aria-hidden="true" viewBox="0 0 20 20" fill="none" className="h-4 w-4"><path d="M12.5 4.5 7 10l5.5 5.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" /></svg>
               Kembali
-            </button>
+            </button>}
             <h2 id="coach-purchase-title" className="mt-4 text-2xl font-bold text-white">
               {orderId ? (orderStatus === "paid" ? "Pembayaran berhasil" : "Status pembayaran") : "Ringkasan pesanan"}
             </h2>
@@ -243,6 +272,7 @@ export default function CoachPurchaseFlow({ open, onClose, onActivated, returnOr
                 {statusMessage && <p role="status" className={`text-sm leading-5 ${orderStatus === "paid" ? "text-emerald-200" : "text-gray-300"}`}>{statusMessage}</p>}
                 {orderStatus === "pending" && checkoutUrl && <a href={checkoutUrl} className="block w-full rounded-lg bg-lime-300 px-4 py-3 text-center text-sm font-bold text-gray-950 transition hover:bg-lime-200">Buka halaman pembayaran lagi</a>}
                 {orderStatus !== "paid" && <button type="button" onClick={() => void checkPaymentStatus()} disabled={busy} className="w-full rounded-lg border border-gray-700 px-4 py-3 text-sm font-semibold text-white disabled:opacity-50">{busy ? "Memeriksa…" : "Periksa status pembayaran"}</button>}
+                {(orderStatus === "expired" || orderStatus === "failed") && <button type="button" onClick={() => { setOrderId(""); setCheckoutUrl(""); setOrderStatus(""); setMessage(""); setStatusMessage(""); }} className="w-full rounded-lg bg-lime-300 px-4 py-3 text-sm font-bold text-gray-950">Buat invoice baru</button>}
               </div>
             )}
 
