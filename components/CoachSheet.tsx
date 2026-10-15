@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type {
   CoachEquipmentId,
   CoachGoal,
@@ -16,6 +16,7 @@ import CoachIcon from "./CoachIcon";
 import CoachEquipmentScene from "./CoachEquipmentScene";
 import CoachMuscleSelector from "./CoachMuscleSelector";
 import ExerciseTutorialModal from "./ExerciseTutorialModal";
+import { trackEvent } from "@/lib/analytics";
 
 type CoachSetup = Pick<
   CoachGoal,
@@ -36,6 +37,7 @@ type CoachSheetProps = {
   goal: CoachGoal | null;
   onClose: () => void;
   onUseRecommendation: (input: CoachSetup, recommendation: CoachProgramRecommendation) => Promise<void>;
+  placement?: "dashboard" | "profile";
 };
 
 const experienceOptions: {
@@ -63,7 +65,7 @@ const goalOptions: { value: CoachGoalType; label: string }[] = [
   { value: "general_fitness", label: "Kebugaran umum" },
 ];
 
-export default function CoachSheet({ open, goal, onClose, onUseRecommendation }: CoachSheetProps) {
+export default function CoachSheet({ open, goal, onClose, onUseRecommendation, placement = "profile" }: CoachSheetProps) {
   const [step, setStep] = useState(1);
   const [weeklySessionTarget, setWeeklySessionTarget] = useState(3);
   const [goalType, setGoalType] = useState<CoachGoalType>("build_muscle");
@@ -84,9 +86,22 @@ export default function CoachSheet({ open, goal, onClose, onUseRecommendation }:
   const [retryCount, setRetryCount] = useState(0);
   const [variation, setVariation] = useState(0);
   const [replaceConfirmOpen, setReplaceConfirmOpen] = useState(false);
+  const viewedSteps = useRef(new Set<number>());
+  const setupStartedForOpen = useRef(false);
+  const appliedForOpen = useRef(false);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      setupStartedForOpen.current = false;
+      appliedForOpen.current = false;
+      return;
+    }
+    if (!setupStartedForOpen.current) {
+      setupStartedForOpen.current = true;
+      appliedForOpen.current = false;
+      viewedSteps.current.clear();
+      trackEvent("Coach Setup Started", { placement, has_existing_program: Boolean(goal?.programIds.length) });
+    }
     setStep(1);
     setWeeklySessionTarget(goal?.weeklySessionTarget ?? 3);
     setGoalType(goal?.type ?? "build_muscle");
@@ -99,10 +114,23 @@ export default function CoachSheet({ open, goal, onClose, onUseRecommendation }:
     setEquipmentIds(goal?.equipmentIds ?? ["dumbbells", "barbell", "bench", "cable_machine", "machines", "bodyweight"]);
     setTrainingLocation(goal?.equipmentAccess === "home_gym" || goal?.equipmentAccess === "bodyweight" ? "home" : "gym");
     setVariation(0);
-  }, [goal, open]);
+  }, [goal, open, placement]);
+
+  useEffect(() => {
+    if (!open || viewedSteps.current.has(step)) return;
+    viewedSteps.current.add(step);
+    trackEvent("Coach Setup Step Viewed", { step_number: step });
+  }, [open, step]);
 
   const setTarget = (value: number) => setWeeklySessionTarget(Math.max(1, Math.min(7, value)));
   const focus = focuses[0] ?? "full_body";
+
+  const closeSetup = () => {
+    if (!appliedForOpen.current) {
+      trackEvent("Coach Setup Closed", { step_number: step });
+    }
+    onClose();
+  };
 
   useEffect(() => {
     if (!open || step !== 4) return;
@@ -121,6 +149,7 @@ export default function CoachSheet({ open, goal, onClose, onUseRecommendation }:
       try {
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
         if (sessionError || !session?.access_token) {
+          trackEvent("Coach Recommendation Generation Failed", { failure_reason: "authentication_required" });
           setRecommendationError("Sesi login berakhir. Silakan masuk kembali.");
           return;
         }
@@ -145,15 +174,23 @@ export default function CoachSheet({ open, goal, onClose, onUseRecommendation }:
         });
         const payload = await response.json() as { recommendation?: CoachProgramRecommendation; error?: string };
         if (!response.ok || !payload.recommendation) {
+          const failureReason = response.status === 401 ? "authentication_required" : response.status === 403 ? "entitlement_inactive" : response.status === 503 ? "service_unavailable" : "request_failed";
+          trackEvent("Coach Recommendation Generation Failed", { failure_reason: failureReason });
           if (response.status === 401) setRecommendationError("Sesi login berakhir. Silakan masuk kembali.");
           else if (response.status === 403) setRecommendationError("Coach Premium tidak aktif pada akun ini.");
           else if (response.status === 503) setRecommendationError("Layanan Coach sedang tidak tersedia. Coba lagi nanti.");
           else setRecommendationError("Program belum dapat dibuat. Periksa pilihan alat lalu coba lagi.");
           return;
         }
-        if (active) setRecommendation(payload.recommendation);
+        if (active) {
+          setRecommendation(payload.recommendation);
+          trackEvent("Coach Recommendation Generated", { generation_type: variation > 0 ? "regenerated" : "initial" });
+        }
       } catch {
-        if (active && !controller.signal.aborted) setRecommendationError("Koneksi gagal. Periksa internet lalu coba lagi.");
+        if (active && !controller.signal.aborted) {
+          trackEvent("Coach Recommendation Generation Failed", { failure_reason: "network_error" });
+          setRecommendationError("Koneksi gagal. Periksa internet lalu coba lagi.");
+        }
       } finally {
         if (active) setRecommendationLoading(false);
       }
@@ -199,9 +236,15 @@ export default function CoachSheet({ open, goal, onClose, onUseRecommendation }:
         equipmentAccess: equipmentIds.length === 0 || equipmentIds.every((item) => item === "bodyweight") ? "bodyweight" : trainingLocation === "home" ? "home_gym" : equipmentIds.includes("machines") ? "full_gym" : "limited_gym",
         equipmentIds,
       }, recommendation);
+      trackEvent("Coach Program Applied", {
+        replacement: Boolean(goal?.programIds.length),
+        session_count: recommendation.programs.length,
+      });
+      appliedForOpen.current = true;
       setReplaceConfirmOpen(false);
       onClose();
     } catch (error) {
+      trackEvent("Coach Program Apply Failed", { failure_reason: "apply_failed" });
       setApplyError(error instanceof Error ? error.message : "Program belum tersimpan. Coba lagi.");
     } finally {
       setApplyingRecommendation(false);
@@ -219,13 +262,13 @@ export default function CoachSheet({ open, goal, onClose, onUseRecommendation }:
 
   return (
     <div className="fixed inset-0 z-50 flex items-end bg-gray-950/75 p-0 sm:items-center sm:justify-center sm:p-4" role="dialog" aria-modal="true" aria-labelledby="coach-sheet-title">
-      <button type="button" className="absolute inset-0 cursor-default" onClick={onClose} disabled={applyingRecommendation} aria-label="Tutup Coach" />
+      <button type="button" className="absolute inset-0 cursor-default" onClick={closeSetup} disabled={applyingRecommendation} aria-label="Tutup Coach" />
       <section className="relative flex max-h-[92dvh] w-full max-w-lg flex-col rounded-t-3xl border border-gray-800 bg-gray-900 px-5 pb-[calc(1.5rem+env(safe-area-inset-bottom))] pt-3 shadow-2xl sm:max-h-[calc(100dvh-2rem)] sm:rounded-3xl">
         <div className="mx-auto h-1 w-10 rounded-full bg-gray-700" />
         {step > 1 && <button type="button" onClick={() => setStep((current) => current - 1)} disabled={applyingRecommendation} className="absolute left-2 top-2 z-10 grid h-11 w-11 place-items-center rounded-xl text-gray-300 hover:bg-gray-800 hover:text-white disabled:opacity-50" aria-label="Kembali ke langkah sebelumnya" title="Kembali">
             <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m15 4-8 8 8 8"/></svg>
           </button>}
-        <button type="button" onClick={onClose} disabled={applyingRecommendation} className="absolute right-2 top-2 z-10 grid h-11 w-11 place-items-center rounded-xl text-gray-300 hover:bg-gray-800 hover:text-white disabled:opacity-50" aria-label="Tutup">
+        <button type="button" onClick={closeSetup} disabled={applyingRecommendation} className="absolute right-2 top-2 z-10 grid h-11 w-11 place-items-center rounded-xl text-gray-300 hover:bg-gray-800 hover:text-white disabled:opacity-50" aria-label="Tutup">
           <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>
         </button>
         <div className="mt-11 flex items-start">
@@ -344,6 +387,7 @@ export default function CoachSheet({ open, goal, onClose, onUseRecommendation }:
                               {!exerciseCatalogLoaded ? <p className="text-xs text-gray-500">Memuat pilihan gerakan...</p> : alternatives.length ? <div className="space-y-1.5">
                                 <p className="mb-2 text-xs text-gray-500">Otot utama: {exerciseCatalog.find((item) => item.id === exerciseId)?.target}</p>
                                 {alternatives.slice(0, 8).map((alternative) => <button key={alternative.id} type="button" onClick={() => {
+                                  trackEvent("Coach Exercise Substituted");
                                   setRecommendation((current) => current ? {
                                     ...current,
                                     programs: current.programs.map((item, itemIndex) => itemIndex !== programIndex ? item : {

@@ -119,7 +119,12 @@ function Tracker({ appVersion }: { appVersion: string }) {
 
   useEffect(() => {
     if (!authResolved || !pathname) return;
-    const query = searchParams.toString();
+    // Coach payment return URLs contain an internal order ID. Do not forward
+    // it to the generic page-view event before CoachEntry cleans the URL.
+    const safeSearchParams = new URLSearchParams(searchParams.toString());
+    safeSearchParams.delete("orderId");
+    safeSearchParams.delete("coach_payment");
+    const query = safeSearchParams.toString();
     const pagePath = query ? `${pathname}?${query}` : pathname;
     if (lastPageRef.current === pagePath) return;
 

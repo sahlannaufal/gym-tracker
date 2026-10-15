@@ -1,14 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import CoachIcon from "./CoachIcon";
 import { supabase } from "@/lib/supabase/client";
+import { trackEvent } from "@/lib/analytics";
 
 type CoachPurchaseFlowProps = {
   open: boolean;
   onClose: () => void;
   onActivated?: () => void;
   returnOrderId?: string | null;
+  placement?: "dashboard" | "profile";
 };
 
 type PurchaseStep = "offer" | "checkout";
@@ -30,7 +32,7 @@ function formatRupiah(amount: number): string {
   return new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(amount);
 }
 
-export default function CoachPurchaseFlow({ open, onClose, onActivated, returnOrderId = null }: CoachPurchaseFlowProps) {
+export default function CoachPurchaseFlow({ open, onClose, onActivated, returnOrderId = null, placement = "profile" }: CoachPurchaseFlowProps) {
   const [step, setStep] = useState<PurchaseStep>("offer");
   const [config, setConfig] = useState<PurchaseConfig | null>(null);
   const [name, setName] = useState("");
@@ -41,9 +43,26 @@ export default function CoachPurchaseFlow({ open, onClose, onActivated, returnOr
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [statusMessage, setStatusMessage] = useState("");
+  const completedOrders = useRef(new Set<string>());
+
+  function trackPurchaseCompleted(completedOrderId: string) {
+    if (!completedOrderId || completedOrders.current.has(completedOrderId)) return;
+    completedOrders.current.add(completedOrderId);
+    trackEvent("Coach Purchase Completed", {
+      provider: "mayar",
+      access_type: "lifetime",
+      amount_idr: config?.amount ?? undefined,
+      currency: "IDR",
+    });
+  }
 
   useEffect(() => {
     if (!open) return;
+    if (returnOrderId) {
+      trackEvent("Coach Checkout Resumed", { placement, resume_source: "payment_return" });
+    } else {
+      trackEvent("Coach Purchase Offer Viewed", { placement });
+    }
     setStep(returnOrderId ? "checkout" : "offer");
     setMessage("");
     setStatusMessage(returnOrderId ? "Memeriksa pembayaran…" : "");
@@ -66,11 +85,19 @@ export default function CoachPurchaseFlow({ open, onClose, onActivated, returnOr
         setName((currentName) => currentName || result.customerName);
         if (result.pendingOrder) {
           const pendingOrder = result.pendingOrder;
+          if (pendingOrder.id !== returnOrderId) {
+            trackEvent("Coach Checkout Resumed", {
+              placement,
+              resume_source: "app_reopen",
+              payment_status: pendingOrder.status,
+            });
+          }
           setStep("checkout");
           setOrderId(pendingOrder.id);
           setCheckoutUrl(pendingOrder.checkout_url ?? "");
           setOrderStatus(pendingOrder.status);
           if (pendingOrder.status === "paid") {
+            trackPurchaseCompleted(pendingOrder.id);
             setStatusMessage("Pembayaran berhasil. Coach Personal aktif selamanya.");
             onActivated?.();
           } else if (pendingOrder.status === "pending") {
@@ -81,13 +108,14 @@ export default function CoachPurchaseFlow({ open, onClose, onActivated, returnOr
     }
     void loadConfig();
     return () => { active = false; };
-  }, [open, returnOrderId, onActivated]);
+  }, [open, returnOrderId, onActivated, placement]);
 
   async function createInvoice() {
     if (!supabase || !config?.available) return;
     setBusy(true);
     setMessage("");
     setStatusMessage("");
+    trackEvent("Coach Checkout Submitted", { placement, provider: "mayar" });
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.access_token) throw new Error("Sesi login berakhir. Silakan masuk kembali.");
@@ -104,8 +132,17 @@ export default function CoachPurchaseFlow({ open, onClose, onActivated, returnOr
       setCheckoutUrl(result.checkoutUrl);
       setOrderStatus("pending");
       setStatusMessage("Mengalihkan ke halaman pembayaran Mayar…");
+      trackEvent("Coach Invoice Created", {
+        provider: "mayar",
+        access_type: "lifetime",
+        amount_idr: config.amount ?? undefined,
+        currency: "IDR",
+      });
       window.location.assign(result.checkoutUrl);
     } catch (error) {
+      trackEvent("Coach Invoice Creation Failed", {
+        failure_reason: error instanceof Error && error.message.includes("Periksa nama") ? "invalid_customer" : "request_failed",
+      });
       setMessage(error instanceof Error ? error.message : "Invoice belum dapat dibuat. Coba lagi.");
     } finally {
       setBusy(false);
@@ -128,7 +165,13 @@ export default function CoachPurchaseFlow({ open, onClose, onActivated, returnOr
       if (!response.ok || !result.order) throw new Error("Status pembayaran belum dapat diperiksa.");
       setOrderStatus(result.order.status);
       setCheckoutUrl(result.order.checkout_url ?? "");
+      trackEvent("Coach Payment Status Checked", {
+        provider: "mayar",
+        payment_status: result.order.status,
+        check_source: "manual",
+      });
       if (result.order.status === "paid") {
+        trackPurchaseCompleted(result.order.id);
         setStatusMessage("Pembayaran berhasil. Coach Personal aktif selamanya.");
         onActivated?.();
       } else if (result.order.status === "pending") {
@@ -140,6 +183,11 @@ export default function CoachPurchaseFlow({ open, onClose, onActivated, returnOr
         setMessage("Invoice tidak lagi aktif. Tutup lalu mulai transaksi baru.");
       }
     } catch (error) {
+      trackEvent("Coach Payment Status Checked", {
+        provider: "mayar",
+        payment_status: "unavailable",
+        check_source: "manual",
+      });
       setStatusMessage("");
       setMessage(error instanceof Error ? error.message : "Status pembayaran belum dapat diperiksa.");
     } finally {
@@ -171,11 +219,22 @@ export default function CoachPurchaseFlow({ open, onClose, onActivated, returnOr
           setOrderStatus(result.order.status);
           setCheckoutUrl(result.order.checkout_url ?? "");
           if (result.order.status === "paid") {
+            trackEvent("Coach Payment Status Checked", {
+              provider: "mayar",
+              payment_status: "paid",
+              check_source: "payment_return",
+            });
+            trackPurchaseCompleted(result.order.id);
             setStatusMessage("Pembayaran berhasil. Coach Personal aktif selamanya.");
             onActivated?.();
             return;
           }
           if (result.order.status !== "pending") {
+            trackEvent("Coach Payment Status Checked", {
+              provider: "mayar",
+              payment_status: result.order.status,
+              check_source: "payment_return",
+            });
             setStatusMessage("");
             setMessage("Invoice tidak lagi aktif. Tutup lalu mulai transaksi baru.");
             return;
@@ -183,10 +242,22 @@ export default function CoachPurchaseFlow({ open, onClose, onActivated, returnOr
           setStatusMessage(attempt < 4
             ? "Pembayaran diterima. Sedang menunggu konfirmasi dari Mayar…"
             : "Pembayaran masih menunggu. Jika sudah membayar, coba periksa status kembali.");
+          if (attempt === 4) {
+            trackEvent("Coach Payment Status Checked", {
+              provider: "mayar",
+              payment_status: "pending",
+              check_source: "payment_return",
+            });
+          }
           if (attempt < 4) await new Promise((resolve) => window.setTimeout(resolve, 3000));
         }
       } catch (error) {
         if (active) {
+          trackEvent("Coach Payment Status Checked", {
+            provider: "mayar",
+            payment_status: "unavailable",
+            check_source: "payment_return",
+          });
           setStatusMessage("");
           setMessage(error instanceof Error ? error.message : "Status pembayaran belum dapat diperiksa.");
         }
@@ -235,7 +306,7 @@ export default function CoachPurchaseFlow({ open, onClose, onActivated, returnOr
               <li className="flex items-center gap-3 text-sm text-gray-200"><CheckIcon />Perbarui program sesuai kebutuhan</li>
             </ul>
 
-            <button type="button" onClick={() => setStep("checkout")} className="mt-7 w-full rounded-xl bg-lime-300 px-4 py-3.5 text-sm font-bold text-gray-950 transition hover:bg-lime-200 focus:outline-none focus:ring-2 focus:ring-lime-200 focus:ring-offset-2 focus:ring-offset-gray-950">Lihat ringkasan pesanan</button>
+          <button type="button" onClick={() => { trackEvent("Coach Checkout Details Viewed", { placement }); setStep("checkout"); }} className="mt-7 w-full rounded-xl bg-lime-300 px-4 py-3.5 text-sm font-bold text-gray-950 transition hover:bg-lime-200 focus:outline-none focus:ring-2 focus:ring-lime-200 focus:ring-offset-2 focus:ring-offset-gray-950">Lihat ringkasan pesanan</button>
           </div>
         ) : (
           <div className="p-5 sm:p-6">
@@ -269,17 +340,17 @@ export default function CoachPurchaseFlow({ open, onClose, onActivated, returnOr
                 <p className={`text-sm font-semibold ${orderStatus === "paid" ? "text-emerald-300" : orderStatus === "pending" ? "text-amber-200" : "text-gray-300"}`}>
                   {orderStatus === "paid" ? "Pembayaran terverifikasi. Coach aktif selamanya." : `Status: ${orderStatus === "pending" ? "Menunggu pembayaran" : orderStatus}`}
                 </p>
-                {statusMessage && <p role="status" className={`text-sm leading-5 ${orderStatus === "paid" ? "text-emerald-200" : "text-gray-300"}`}>{statusMessage}</p>}
+                {statusMessage && orderStatus !== "paid" && <p role="status" className="text-sm leading-5 text-gray-300">{statusMessage}</p>}
                 {orderStatus === "pending" && checkoutUrl && <a href={checkoutUrl} className="block w-full rounded-lg bg-lime-300 px-4 py-3 text-center text-sm font-bold text-gray-950 transition hover:bg-lime-200">Buka halaman pembayaran lagi</a>}
                 {orderStatus !== "paid" && <button type="button" onClick={() => void checkPaymentStatus()} disabled={busy} className="w-full rounded-lg border border-gray-700 px-4 py-3 text-sm font-semibold text-white disabled:opacity-50">{busy ? "Memeriksa…" : "Periksa status pembayaran"}</button>}
                 {(orderStatus === "expired" || orderStatus === "failed") && <button type="button" onClick={() => { setOrderId(""); setCheckoutUrl(""); setOrderStatus(""); setMessage(""); setStatusMessage(""); }} className="w-full rounded-lg bg-lime-300 px-4 py-3 text-sm font-bold text-gray-950">Buat invoice baru</button>}
               </div>
             )}
 
-            <div className="mt-4 flex gap-3 rounded-xl border border-gray-800 bg-gray-900/50 p-3.5">
+            {orderStatus !== "paid" && <div className="mt-4 flex gap-3 rounded-xl border border-gray-800 bg-gray-900/50 p-3.5">
               <svg aria-hidden="true" viewBox="0 0 20 20" fill="none" className="mt-0.5 h-4 w-4 shrink-0 text-gray-400"><path d="M10 2.5 3.5 5v4.7c0 3.7 2.6 6.2 6.5 7.8 3.9-1.6 6.5-4.1 6.5-7.8V5L10 2.5Z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" /><path d="m7.3 9.8 1.8 1.8 3.7-3.8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" /></svg>
               <p className="text-xs leading-5 text-gray-400">Akses aktif setelah pembayaran terverifikasi.</p>
-            </div>
+            </div>}
 
             {!orderId && <button type="button" onClick={() => void createInvoice()} disabled={busy || !config?.available || name.trim().length < 2 || mobile.trim().length < 8} className="mt-6 w-full rounded-xl bg-lime-300 px-4 py-3.5 text-sm font-bold text-gray-950 disabled:cursor-not-allowed disabled:bg-gray-800 disabled:text-gray-500">{busy ? "Menyiapkan pembayaran…" : "Lanjutkan ke pembayaran"}</button>}
             {message && <p role="alert" className="mt-3 text-center text-sm text-rose-300">{message}</p>}

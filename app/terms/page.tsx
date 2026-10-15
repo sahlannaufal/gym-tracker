@@ -27,7 +27,7 @@ const sections = [
   },
   {
     title: "5. Akun, privasi, dan layanan pihak ketiga",
-    text: "Supabase memproses autentikasi dan penyimpanan cloud. Jika menggunakan login Google, autentikasi juga melibatkan Google. Aplikasi memproses identitas akun, email, catatan latihan, program, jadwal, dan pengukuran yang Anda masukkan untuk menyediakan fitur tersebut. Di production, browser pada halaman aplikasi setelah login otomatis diarahkan ke tautan Shopee setiap lima menit selama tab terlihat. Tautan dapat membawa atribusi referral/afiliasi; jika memenuhi ketentuan Shopee, pengelola dapat menerima komisi tanpa biaya tambahan bagi Anda. Animasi tutorial dimuat dari CDN ExerciseDB saat tutorial dibuka; penyedia menerima permintaan jaringan dari perangkat Anda. Masing-masing penyedia juga memiliki kebijakan privasi sendiri.",
+    text: "Supabase memproses autentikasi dan penyimpanan cloud. Jika menggunakan login Google, autentikasi juga melibatkan Google. Aplikasi memproses identitas akun, email, catatan latihan, program, jadwal, dan pengukuran yang Anda masukkan untuk menyediakan fitur tersebut. Di production, browser pada halaman aplikasi setelah login dapat diarahkan ke tautan Shopee setiap lima menit selama tab terlihat jika akun tidak memiliki akses Coach Premium aktif. Tautan dapat membawa atribusi referral/afiliasi; jika memenuhi ketentuan Shopee, pengelola dapat menerima komisi tanpa biaya tambahan bagi Anda. Animasi tutorial dimuat dari CDN ExerciseDB saat tutorial dibuka; penyedia menerima permintaan jaringan dari perangkat Anda. Masing-masing penyedia juga memiliki kebijakan privasi sendiri.",
   },
   {
     title: "6. Analitik penggunaan",

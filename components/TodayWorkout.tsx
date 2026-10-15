@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTrainingPrograms } from "@/lib/useTrainingPrograms";
 import { useWorkouts } from "@/lib/useWorkouts";
 import { useCoachGoal } from "@/lib/useCoachGoal";
@@ -10,6 +10,7 @@ import type { Workout, WorkoutInput } from "@/lib/types";
 import FloatingRestTimer from "./FloatingRestTimer";
 import ExerciseTutorialModal from "./ExerciseTutorialModal";
 import type { WorkoutTrackingContext } from "@/lib/useWorkouts";
+import { trackEvent } from "@/lib/analytics";
 
 const inputClass =
   "w-full rounded-xl border border-gray-700 bg-gray-900 px-4 py-2.5 text-gray-100 " +
@@ -337,6 +338,7 @@ export default function TodayWorkout({
   const [timerExercise, setTimerExercise] = useState<string>();
   const [timerRestartKey, setTimerRestartKey] = useState(0);
   const [tutorialExercise, setTutorialExercise] = useState<string>();
+  const coachWorkoutEvents = useRef(new Set<string>());
 
   const startRestTimer = (exercise: string) => {
     setTimerExercise(exercise);
@@ -376,6 +378,30 @@ export default function TodayWorkout({
   const entriesFor = (name: string) =>
     workouts.filter((workout) => workout.exercise === name && workout.date === date);
 
+  const selectCoachProgram = (programId: string, selectionMethod: "rotation_button" | "program_picker") => {
+    setAssignment(date, programId);
+    trackEvent("Coach Program Selected", { selection_method: selectionMethod });
+  };
+
+  const addTodayWorkout = (input: WorkoutInput, context?: WorkoutTrackingContext) => {
+    const saved = addWorkout(input, context);
+    if (context?.inputMethod === "quick_log" && selectedProgram && coachProgramIds.has(selectedProgram.id)) {
+      const key = `${date}:${selectedProgram.id}`;
+      let alreadyTracked = coachWorkoutEvents.current.has(key);
+      try {
+        alreadyTracked ||= window.sessionStorage.getItem(`coach-workout-logged:${key}`) === "1";
+        if (!alreadyTracked) window.sessionStorage.setItem(`coach-workout-logged:${key}`, "1");
+      } catch {
+        // Tracking dedupe is best-effort; workout logging must always succeed.
+      }
+      if (!alreadyTracked) {
+        coachWorkoutEvents.current.add(key);
+        trackEvent("Coach Workout Logged", { input_method: "quick_log" });
+      }
+    }
+    return saved;
+  };
+
   return (
     <section className="space-y-6">
       <div>
@@ -390,7 +416,7 @@ export default function TodayWorkout({
           <div><p className="text-sm font-semibold text-lime-200">Rotasi Coach</p><p className="mt-1 text-xs text-gray-500">Pilih sesi berikutnya; program lain tetap tersedia untuk hari lain.</p></div>
           <span className="shrink-0 rounded-full bg-gray-900 px-2.5 py-1 text-xs text-gray-400">{coachPrograms.length} sesi</span>
         </div>
-        {nextCoachProgram && !assignment && <button type="button" onClick={() => setAssignment(date, nextCoachProgram.id)} className="mt-3 w-full rounded-xl bg-lime-400 px-4 py-2.5 text-left text-sm font-bold text-gray-950 hover:bg-lime-300">Pilih sesi berikutnya · {nextCoachProgram.name.replace("Coach · ", "")}</button>}
+        {nextCoachProgram && !assignment && <button type="button" onClick={() => selectCoachProgram(nextCoachProgram.id, "rotation_button")} className="mt-3 w-full rounded-xl bg-lime-400 px-4 py-2.5 text-left text-sm font-bold text-gray-950 hover:bg-lime-300">Pilih sesi berikutnya · {nextCoachProgram.name.replace("Coach · ", "")}</button>}
         {previousCoachUses[0] && <p className="mt-2 text-xs text-gray-500">Terakhir dipakai {formatDate(previousCoachUses[0][0])}: {store.programs.find((program) => program.id === previousCoachUses[0][1].programId)?.name.replace("Coach · ", "")}</p>}
         {selectedProgram && coachProgramIds.has(selectedProgram.id) && <p className={`mt-3 inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold ${coachProgramWasUsed(selectedProgram.id, date) ? "bg-lime-400/10 text-lime-200" : "bg-gray-900 text-gray-400"}`}>{coachProgramWasUsed(selectedProgram.id, date) ? <><svg className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="m4 10 4 4 8-8" /></svg>Sudah digunakan hari ini</> : "Belum digunakan hari ini"}</p>}
       </section>}
@@ -403,7 +429,9 @@ export default function TodayWorkout({
             onChange={(event) => {
               const value = event.target.value;
               if (!value) clearAssignment(date);
-              else setAssignment(date, value === "__rest__" ? null : value);
+              else if (value === "__rest__") setAssignment(date, null);
+              else if (coachProgramIds.has(value)) selectCoachProgram(value, "program_picker");
+              else setAssignment(date, value);
             }}
             className={inputClass}
           >
@@ -454,7 +482,7 @@ export default function TodayWorkout({
                     b.createdAt.localeCompare(a.createdAt),
                 )[0]}
               date={date}
-              onAdd={addWorkout}
+              onAdd={addTodayWorkout}
               onUpdate={updateWorkout}
               onDelete={removeWorkout}
               onStartRest={startRestTimer}
