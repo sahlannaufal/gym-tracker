@@ -30,6 +30,7 @@ export default function CoachPurchaseFlow({ open, onClose, onActivated, returnOr
   const [name, setName] = useState("");
   const [mobile, setMobile] = useState("");
   const [orderId, setOrderId] = useState("");
+  const [checkoutUrl, setCheckoutUrl] = useState("");
   const [orderStatus, setOrderStatus] = useState<PurchaseOrder["status"] | "" >("");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
@@ -41,6 +42,7 @@ export default function CoachPurchaseFlow({ open, onClose, onActivated, returnOr
     setMessage("");
     setStatusMessage(returnOrderId ? "Memeriksa pembayaran…" : "");
     setOrderId(returnOrderId ?? "");
+    setCheckoutUrl("");
     setOrderStatus(returnOrderId ? "pending" : "");
     let active = true;
     async function loadConfig() {
@@ -80,6 +82,7 @@ export default function CoachPurchaseFlow({ open, onClose, onActivated, returnOr
         throw new Error(result.error === "invalid_customer" ? "Periksa nama dan nomor ponsel." : "Invoice belum dapat dibuat. Coba lagi.");
       }
       setOrderId(result.orderId);
+      setCheckoutUrl(result.checkoutUrl);
       setOrderStatus("pending");
       setStatusMessage("Mengalihkan ke halaman pembayaran Mayar…");
       window.location.assign(result.checkoutUrl);
@@ -105,6 +108,7 @@ export default function CoachPurchaseFlow({ open, onClose, onActivated, returnOr
       const result = await response.json() as { order?: PurchaseOrder };
       if (!response.ok || !result.order) throw new Error("Status pembayaran belum dapat diperiksa.");
       setOrderStatus(result.order.status);
+      setCheckoutUrl(result.order.checkout_url ?? "");
       if (result.order.status === "paid") {
         setStatusMessage("Pembayaran berhasil. Coach Personal aktif selamanya.");
         onActivated?.();
@@ -142,6 +146,7 @@ export default function CoachPurchaseFlow({ open, onClose, onActivated, returnOr
         if (!response.ok || !result.order) throw new Error("Status pembayaran belum dapat diperiksa.");
         if (!active) return;
         setOrderStatus(result.order.status);
+        setCheckoutUrl(result.order.checkout_url ?? "");
         if (result.order.status === "paid") {
           setStatusMessage("Pembayaran berhasil. Coach Personal aktif selamanya.");
           onActivated?.();
@@ -236,6 +241,7 @@ export default function CoachPurchaseFlow({ open, onClose, onActivated, returnOr
                   {orderStatus === "paid" ? "Pembayaran terverifikasi. Coach aktif selamanya." : `Status: ${orderStatus === "pending" ? "Menunggu pembayaran" : orderStatus}`}
                 </p>
                 {statusMessage && <p role="status" className={`text-sm leading-5 ${orderStatus === "paid" ? "text-emerald-200" : "text-gray-300"}`}>{statusMessage}</p>}
+                {orderStatus === "pending" && checkoutUrl && <a href={checkoutUrl} className="block w-full rounded-lg bg-lime-300 px-4 py-3 text-center text-sm font-bold text-gray-950 transition hover:bg-lime-200">Buka halaman pembayaran lagi</a>}
                 {orderStatus !== "paid" && <button type="button" onClick={() => void checkPaymentStatus()} disabled={busy} className="w-full rounded-lg border border-gray-700 px-4 py-3 text-sm font-semibold text-white disabled:opacity-50">{busy ? "Memeriksa…" : "Periksa status pembayaran"}</button>}
               </div>
             )}
