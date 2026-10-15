@@ -10,6 +10,7 @@ import type { CoachProgramRecommendation } from "@/lib/coachProgramRecommendatio
 import type { CoachGoal } from "@/lib/types";
 import CoachIcon from "./CoachIcon";
 import CoachPurchaseFlow from "./CoachPurchaseFlow";
+import { consumeCoachOfferIntent, hasCoachOfferIntent } from "@/lib/coachOfferIntent";
 
 function createCoachProgramId(): string {
   return `p_${Date.now()}_${crypto.randomUUID()}`;
@@ -22,8 +23,10 @@ export default function CoachEntry({ placement = "profile" }: { placement?: "das
   const [open, setOpen] = useState(false);
   const [entitled, setEntitled] = useState(false);
   const [membershipLoaded, setMembershipLoaded] = useState(false);
+  const [membershipCheckSucceeded, setMembershipCheckSucceeded] = useState(false);
   const [paywallOpen, setPaywallOpen] = useState(false);
   const [returnOrderId, setReturnOrderId] = useState<string | null>(null);
+  const [purchasePlacement, setPurchasePlacement] = useState<"dashboard" | "profile" | "referral_link">(placement);
 
   const handleCoachActivated = useCallback(() => {
     setEntitled(true);
@@ -39,12 +42,18 @@ export default function CoachEntry({ placement = "profile" }: { placement?: "das
     let active = true;
     async function loadMembership() {
       if (!supabase) { setMembershipLoaded(true); return; }
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user || !active) { if (active) setMembershipLoaded(true); return; }
-      const { data } = await supabase.from("coach_entitlements").select("status,current_period_end").eq("user_id", user.id).maybeSingle();
-      const isActive = data?.status === "active" && (!data.current_period_end || data.current_period_end > new Date().toISOString());
-      if (active) setEntitled(Boolean(isActive));
-      if (active) setMembershipLoaded(true);
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user || !active) { if (active) setMembershipLoaded(true); return; }
+        const { data, error } = await supabase.from("coach_entitlements").select("status,current_period_end").eq("user_id", user.id).maybeSingle();
+        if (error) { if (active) setMembershipLoaded(true); return; }
+        const isActive = data?.status === "active" && (!data.current_period_end || data.current_period_end > new Date().toISOString());
+        if (active) setEntitled(Boolean(isActive));
+        if (active) setMembershipCheckSucceeded(true);
+        if (active) setMembershipLoaded(true);
+      } catch {
+        if (active) setMembershipLoaded(true);
+      }
     }
     void loadMembership();
     return () => { active = false; };
@@ -63,6 +72,19 @@ export default function CoachEntry({ placement = "profile" }: { placement?: "das
     url.searchParams.delete("orderId");
     window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
   }, [membershipLoaded]);
+
+  useEffect(() => {
+    if (placement !== "dashboard" || !membershipLoaded || !membershipCheckSucceeded || !hasCoachOfferIntent()) return;
+    const hadOfferIntent = consumeCoachOfferIntent();
+    if (!hadOfferIntent || entitled) return;
+    setPurchasePlacement("referral_link");
+    setPaywallOpen(true);
+  }, [entitled, membershipCheckSucceeded, membershipLoaded, placement]);
+
+  const openPurchase = useCallback(() => {
+    setPurchasePlacement(placement);
+    setPaywallOpen(true);
+  }, [placement]);
 
   async function acceptRecommendation(input: Parameters<typeof saveGoal>[0], recommendation: CoachProgramRecommendation): Promise<void> {
     if (!supabase) throw new Error("Coach memerlukan koneksi akun.");
@@ -111,7 +133,7 @@ export default function CoachEntry({ placement = "profile" }: { placement?: "das
   return (
     <>
       {placement === "dashboard" ? (
-        <button type="button" onClick={() => entitled ? setOpen(true) : setPaywallOpen(true)} aria-label={entitled ? "Buka Coach saya" : "Lihat Coach Premium"} title={entitled ? "Coach Saya" : "Coach Premium"} className="relative grid h-11 w-11 place-items-center rounded-xl border border-lime-400/30 bg-lime-400/10 text-lime-300 transition-colors hover:border-lime-300/60 hover:bg-lime-400/20 focus:outline-none focus:ring-2 focus:ring-lime-400/50">
+        <button type="button" onClick={() => entitled ? setOpen(true) : openPurchase()} aria-label={entitled ? "Buka Coach saya" : "Lihat Coach Premium"} title={entitled ? "Coach Saya" : "Coach Premium"} className="relative grid h-11 w-11 place-items-center rounded-xl border border-lime-400/30 bg-lime-400/10 text-lime-300 transition-colors hover:border-lime-300/60 hover:bg-lime-400/20 focus:outline-none focus:ring-2 focus:ring-lime-400/50">
           <CoachIcon id="coach" className="h-6 w-6" />
           <span className={`absolute right-1 top-1 h-1.5 w-1.5 rounded-full ${entitled ? "bg-emerald-400" : "bg-lime-300"}`} />
         </button>
@@ -127,12 +149,12 @@ export default function CoachEntry({ placement = "profile" }: { placement?: "das
               {entitled ? "Aktif" : "Nonaktif"}
             </span>
           </div>
-          <button type="button" onClick={() => entitled ? setOpen(true) : setPaywallOpen(true)} className="shrink-0 rounded-lg bg-lime-400 px-3 py-2 text-xs font-bold text-gray-950 transition-colors hover:bg-lime-300">
+          <button type="button" onClick={() => entitled ? setOpen(true) : openPurchase()} className="shrink-0 rounded-lg bg-lime-400 px-3 py-2 text-xs font-bold text-gray-950 transition-colors hover:bg-lime-300">
             {entitled ? "Kelola" : "Lihat Coach"}
           </button>
         </div>
       </section>}
-      {membershipLoaded && <CoachPurchaseFlow open={paywallOpen} onClose={() => setPaywallOpen(false)} onActivated={handleCoachActivated} returnOrderId={returnOrderId} placement={placement} />}
+      {membershipLoaded && <CoachPurchaseFlow open={paywallOpen} onClose={() => setPaywallOpen(false)} onActivated={handleCoachActivated} returnOrderId={returnOrderId} placement={purchasePlacement} />}
       <CoachSheet open={open} goal={goal as CoachGoal | null} onClose={() => setOpen(false)} onUseRecommendation={acceptRecommendation} placement={placement} />
     </>
   );

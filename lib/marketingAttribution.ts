@@ -1,7 +1,7 @@
 import type { AnalyticsProperties } from "./analytics";
 import type { MarketingSource } from "./site";
 
-export type LandingCtaName = "header_login" | "hero_start" | "hero_features" | "footer_start";
+export type LandingCtaName = "header_login" | "hero_start" | "hero_features" | "hero_coach" | "coach_premium" | "footer_start";
 export type BlogCtaName = "header_start" | "article_start";
 export type { MarketingSource };
 

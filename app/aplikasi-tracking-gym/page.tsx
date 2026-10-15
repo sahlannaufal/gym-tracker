@@ -7,12 +7,12 @@ const pageUrl = "https://abadikan.com/";
 
 export const metadata: Metadata = {
   title: "Abadikan Gym — Catat Progres, Bukan Sekadar Latihan",
-  description: "Catat latihan, susun program, dan lihat progres kekuatanmu dari waktu ke waktu dengan Abadikan Gym.",
+  description: "Baru mulai gym? Coach bantu menyusun program sesuai tujuan dan alat yang tersedia. Catat latihan dan lihat progresmu di Abadikan Gym.",
   alternates: { canonical: pageUrl },
   openGraph: {
     type: "website", locale: "id_ID", url: pageUrl, siteName: "Abadikan Gym",
     title: "Abadikan Gym — Catat Progres, Bukan Sekadar Latihan",
-    description: "Semua sesi latihanmu tersusun rapi. Setiap progres jadi terlihat.",
+    description: "Program latihan yang bisa ditinjau sebelum digunakan, ditambah catatan progres gym dalam satu aplikasi.",
   },
   robots: { index: true, follow: true },
 };
@@ -21,7 +21,7 @@ const structuredData = {
   "@context": "https://schema.org", "@type": "SoftwareApplication",
   name: "Abadikan Gym Tracker", applicationCategory: "HealthApplication",
   operatingSystem: "Web, Android, iOS", url: pageUrl,
-  description: "Aplikasi tracking gym untuk mencatat latihan, program, progres beban, dan perkembangan tubuh.",
+  description: "Aplikasi gym untuk mencatat latihan dan progres, dengan Coach Personal yang membantu pemula menyusun program sesuai tujuan dan peralatan.",
   offers: { "@type": "Offer", price: "0", priceCurrency: "IDR" },
 };
 
@@ -72,7 +72,7 @@ export default function MarketingPage() {
                 <p className="marketing-kicker"><span className="marketing-kicker-line"/> CATAT. PAHAMI. JADI LEBIH KUAT.</p>
                 <h1 className="marketing-display mt-7 max-w-3xl">Setiap repetisi punya <em>cerita.</em></h1>
                 <p className="mt-7 max-w-xl text-base leading-7 text-gray-400 sm:text-lg sm:leading-8">Abadikan Gym membantumu mengingat latihan hari ini dan melihat sejauh apa kamu sudah berkembang.</p>
-                <div className="mt-9 flex flex-wrap items-center gap-4"><TrackedMarketingLink href="/login" ctaName="hero_start" leadsToAuth className="marketing-primary-cta">Mulai gratis <span aria-hidden="true">↗</span></TrackedMarketingLink><a className="marketing-text-link" href="#cerita">Lihat cara kerjanya <span aria-hidden="true">↓</span></a></div>
+                <div className="mt-9 flex flex-wrap items-center gap-4"><TrackedMarketingLink href="/login" ctaName="hero_start" leadsToAuth className="marketing-primary-cta">Mulai gratis <span aria-hidden="true">↗</span></TrackedMarketingLink><a className="marketing-text-link" href="#cerita">Lihat cara kerjanya <span aria-hidden="true">↓</span></a><TrackedMarketingLink href="#coach" ctaName="hero_coach" className="marketing-text-link">Baru mulai gym? Kenali Coach <span aria-hidden="true">↓</span></TrackedMarketingLink></div>
               </div>
               <div className="marketing-preview-wrap" data-scroll-reveal><div className="marketing-preview-caption"><span>PROGRES YANG TERLIHAT</span><span>01 — 03</span></div><WorkoutPreview/><div className="marketing-floating-note"><span className="marketing-note-icon">↗</span><span><small>BENCH PRESS · 8 MINGGU</small><strong>+12.5 <small>kg</small></strong></span></div></div>
             </div>
@@ -91,6 +91,38 @@ export default function MarketingPage() {
           <section className="marketing-feature-section px-5 py-20 sm:px-10 sm:py-28 lg:px-14">
             <div className="mx-auto max-w-[1440px]"><div className="flex flex-col justify-between gap-6 sm:flex-row sm:items-end" data-scroll-reveal><div><p className="marketing-kicker"><span className="marketing-kicker-line"/> PERJALANAN LATIHANMU</p><h2 className="marketing-section-title mt-5">Dari catatan kecil,<br/><em>terlihat perubahan.</em></h2></div><p className="max-w-sm text-sm leading-6 text-gray-400">Semua yang kamu butuhkan untuk menjaga ritme dan memahami progres latihanmu.</p></div>
               <div className="marketing-feature-grid mt-14">{featureCards.map((feature) => <article key={feature.number} className="marketing-feature-card" data-scroll-reveal><div className="flex items-center justify-between"><span className="marketing-feature-number">{feature.number}</span><span className="marketing-card-arrow" aria-hidden="true">↗</span></div><p className="marketing-kicker mt-12">{feature.eyebrow}</p><h3>{feature.title}</h3><p className="marketing-feature-copy">{feature.text}</p></article>)}</div>
+            </div>
+          </section>
+
+          <section id="coach" className="px-5 py-16 sm:px-10 sm:py-24 lg:px-14" aria-labelledby="coach-marketing-title">
+            <div className="mx-auto grid max-w-[1440px] items-center gap-10 overflow-hidden rounded-3xl border border-lime-300/20 bg-gradient-to-br from-[#1c2416] via-[#151912] to-[#11130f] p-6 sm:p-10 lg:grid-cols-[1.05fr_0.95fr] lg:gap-16 lg:p-14" data-scroll-reveal>
+              <div>
+                <p className="marketing-kicker"><span className="marketing-kicker-line"/> COACH PERSONAL · UNTUK PEMULA</p>
+                <h2 id="coach-marketing-title" className="marketing-section-title mt-6">Baru mulai gym?<br/><em>Mulai dengan arah.</em></h2>
+                <p className="mt-6 max-w-xl text-sm leading-7 text-gray-400 sm:text-base">Kalau masih bingung menyusun latihan, Coach membantumu membuat program berdasarkan tujuan, pengalaman, otot prioritas, dan alat yang tersedia.</p>
+                <ul className="mt-7 space-y-3 text-sm text-gray-200">
+                  <li className="flex gap-3"><span className="text-lime-300" aria-hidden="true">✓</span><span>Tinjau program latihan sebelum mulai menggunakannya.</span></li>
+                  <li className="flex gap-3"><span className="text-lime-300" aria-hidden="true">✓</span><span>Ganti gerakan dengan alternatif yang melatih otot serupa.</span></li>
+                  <li className="flex gap-3"><span className="text-lime-300" aria-hidden="true">✓</span><span>Catat latihan dan progresmu di aplikasi yang sama.</span></li>
+                </ul>
+                <div className="mt-8 flex flex-wrap items-center gap-4">
+                  <TrackedMarketingLink href="/login" ctaName="coach_premium" leadsToAuth className="marketing-primary-cta">Lihat Coach Premium <span aria-hidden="true">↗</span></TrackedMarketingLink>
+                  <span className="text-xs text-gray-400">Sekali bayar · akses selamanya</span>
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-white/10 bg-[#0d100b]/80 p-4 shadow-2xl shadow-black/20 sm:p-6" aria-label="Gambaran alur Coach Personal">
+                <div className="flex items-center justify-between border-b border-white/10 pb-4">
+                  <div><p className="text-[10px] font-bold tracking-[0.18em] text-lime-300">ALUR COACH</p><p className="mt-1 text-sm font-semibold text-white">Program disesuaikan untukmu</p></div>
+                  <span className="rounded-full border border-lime-300/20 bg-lime-300/10 px-3 py-1 text-[10px] font-semibold text-lime-200">4 langkah</span>
+                </div>
+                <ol className="mt-5 space-y-3">
+                  <li className="flex items-center gap-3 rounded-xl border border-white/5 bg-white/[0.03] p-3.5"><span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-lime-300/10 text-xs font-bold text-lime-200">01</span><span><strong className="block text-sm text-gray-100">Tujuan latihan</strong><small className="mt-0.5 block text-xs text-gray-500">Tentukan arah programmu</small></span></li>
+                  <li className="flex items-center gap-3 rounded-xl border border-white/5 bg-white/[0.03] p-3.5"><span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-lime-300/10 text-xs font-bold text-lime-200">02</span><span><strong className="block text-sm text-gray-100">Pengalaman</strong><small className="mt-0.5 block text-xs text-gray-500">Sesuaikan dengan tahap latihanmu</small></span></li>
+                  <li className="flex items-center gap-3 rounded-xl border border-white/5 bg-white/[0.03] p-3.5"><span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-lime-300/10 text-xs font-bold text-lime-200">03</span><span><strong className="block text-sm text-gray-100">Alat dan target</strong><small className="mt-0.5 block text-xs text-gray-500">Pilih yang tersedia di gym atau rumah</small></span></li>
+                </ol>
+                <div className="mt-4 flex items-center gap-3 rounded-xl border border-lime-300/20 bg-lime-300/[0.07] p-3.5"><span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-lime-300 text-gray-950" aria-hidden="true">↗</span><span><strong className="block text-sm text-lime-100">Program siap ditinjau</strong><small className="mt-0.5 block text-xs text-gray-400">Gerakan masih bisa kamu sesuaikan</small></span></div>
+              </div>
             </div>
           </section>
 

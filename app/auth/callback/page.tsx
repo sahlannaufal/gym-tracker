@@ -7,6 +7,7 @@ import { isSyncConfigured, supabase } from "@/lib/supabase/client";
 import { identifyAndSetUser, trackEvent } from "@/lib/analytics";
 import { consumeOAuthIntent, type OAuthIntent } from "@/lib/oauthIntent";
 import { consumeMarketingAttribution } from "@/lib/marketingAttribution";
+import { saveCoachOfferIntentFromUrl } from "@/lib/coachOfferIntent";
 
 type CallbackState =
   | { status: "loading" }
@@ -39,6 +40,7 @@ export default function AuthCallbackPage() {
     let active = true;
 
     async function verify() {
+      saveCoachOfferIntentFromUrl(new URLSearchParams(window.location.search));
       // Ref mempertahankan intent pada simulasi mount ulang React Strict Mode.
       const intent = oauthIntentRef.current === undefined
         ? consumeOAuthIntent()

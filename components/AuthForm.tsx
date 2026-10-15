@@ -11,6 +11,7 @@ import {
   saveMarketingAttributionFromUrl,
 } from "@/lib/marketingAttribution";
 import PasswordInput from "./PasswordInput";
+import { hasCoachOfferIntent, saveCoachOfferIntentFromUrl } from "@/lib/coachOfferIntent";
 
 function normalizeLoginFailure(error: unknown): string {
   const message = error instanceof Error ? error.message.toLowerCase() : "";
@@ -59,7 +60,9 @@ export default function AuthForm() {
   // landing/blog → registrar/login tetap teranalisis.
   useEffect(() => {
     if (typeof window === "undefined") return;
-    saveMarketingAttributionFromUrl(new URLSearchParams(window.location.search));
+    const query = new URLSearchParams(window.location.search);
+    saveMarketingAttributionFromUrl(query);
+    saveCoachOfferIntentFromUrl(query);
   }, []);
 
   if (!isSyncConfigured()) {
@@ -86,7 +89,7 @@ export default function AuthForm() {
           email,
           password,
           options: {
-            emailRedirectTo: `${window.location.origin}/auth/callback`,
+            emailRedirectTo: `${window.location.origin}/auth/callback${hasCoachOfferIntent() ? "?offer=coach" : ""}`,
           },
         });
         if (error) throw error;
@@ -166,7 +169,7 @@ export default function AuthForm() {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
+          redirectTo: `${window.location.origin}/auth/callback${hasCoachOfferIntent() ? "?offer=coach" : ""}`,
           queryParams: {
             prompt: "select_account",
           },
