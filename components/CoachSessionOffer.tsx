@@ -26,14 +26,17 @@ export default function CoachSessionOffer() {
     }
     if (!configured || !supabase || inspectedUserId.current === userId) return;
 
-    inspectedUserId.current = userId;
+    // Capture the narrowed ID explicitly; TypeScript does not retain the
+    // optional-chain narrowing inside the nested async function.
+    const authenticatedUserId: string = userId;
+    inspectedUserId.current = authenticatedUserId;
     let active = true;
 
     async function inspectEntitlement() {
       const { data, error } = await supabase!
         .from("coach_entitlements")
         .select("status,current_period_end")
-        .eq("user_id", userId)
+        .eq("user_id", authenticatedUserId)
         .maybeSingle();
 
       // Jangan tampilkan paywall jika status premium tidak dapat dipastikan.
@@ -47,9 +50,9 @@ export default function CoachSessionOffer() {
       }
 
       const referralIntent = hasCoachOfferIntent();
-      if (!referralIntent && hasShownCoachOfferThisSession(userId)) return;
+      if (!referralIntent && hasShownCoachOfferThisSession(authenticatedUserId)) return;
 
-      markCoachOfferShownThisSession(userId);
+      markCoachOfferShownThisSession(authenticatedUserId);
       setPlacement(consumeCoachOfferIntent() ? "referral_link" : "session_start");
       setOpen(true);
     }
