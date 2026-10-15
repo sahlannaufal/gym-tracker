@@ -34,7 +34,7 @@ function formatRupiah(amount: number): string {
 }
 
 function RegularPriceStrike({ className = "" }: { className?: string }) {
-  return <del className={`text-xs text-gray-500 line-through ${className}`}>{formatRupiah(COACH_REGULAR_PRICE_IDR)}</del>;
+  return <del className={`text-xs text-red-400 line-through ${className}`}>{formatRupiah(COACH_REGULAR_PRICE_IDR)}</del>;
 }
 
 export default function CoachPurchaseFlow({ open, onClose, onActivated, returnOrderId = null, placement = "profile" }: CoachPurchaseFlowProps) {
