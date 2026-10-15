@@ -10,6 +10,7 @@ import SyncStatus from "./SyncStatus";
 import BodyCompositionPanel from "./BodyCompositionPanel";
 import CoachEntry from "./CoachEntry";
 import { resetMixpanel, trackEvent } from "@/lib/analytics";
+import { clearCoachOfferShownThisSession } from "@/lib/coachOfferIntent";
 
 export default function AccountPanel() {
   const router = useRouter();
@@ -76,6 +77,7 @@ export default function AccountPanel() {
     setLogoutError("");
     const { error } = await supabase.auth.signOut();
     if (!error) {
+      clearCoachOfferShownThisSession(user.id);
       trackEvent("Logout Completed");
       resetMixpanel();
       setLogoutOpen(false);

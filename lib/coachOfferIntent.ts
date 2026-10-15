@@ -1,4 +1,5 @@
 const STORAGE_KEY = "gym_tracker_coach_offer_intent_v1";
+const SESSION_OFFER_KEY_PREFIX = "gym_tracker_coach_session_offer_shown_v1";
 const MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 
 type CoachOfferIntent = { createdAt: number };
@@ -48,4 +49,35 @@ export function consumeCoachOfferIntent(): boolean {
     // Penawaran sudah diperiksa; kegagalan cleanup tidak menghalangi alur.
   }
   return available;
+}
+
+function sessionOfferKey(userId: string): string {
+  return `${SESSION_OFFER_KEY_PREFIX}_${userId}`;
+}
+
+export function hasShownCoachOfferThisSession(userId: string): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    return window.sessionStorage.getItem(sessionOfferKey(userId)) === "1";
+  } catch {
+    return false;
+  }
+}
+
+export function markCoachOfferShownThisSession(userId: string): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.sessionStorage.setItem(sessionOfferKey(userId), "1");
+  } catch {
+    // Component hanya dipasang sekali di AppShell; sessionStorage bersifat best effort.
+  }
+}
+
+export function clearCoachOfferShownThisSession(userId: string): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.sessionStorage.removeItem(sessionOfferKey(userId));
+  } catch {
+    // Penanda sesi hanya mengatur frekuensi tampilan penawaran.
+  }
 }

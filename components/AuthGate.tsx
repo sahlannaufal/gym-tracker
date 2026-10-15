@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/lib/useAuth";
 import { useIsMarketingHost } from "@/lib/useMarketingHost";
 import { isMarketingHostname } from "@/lib/site";
-import { saveCoachOfferIntentFromUrl } from "@/lib/coachOfferIntent";
+import { clearCoachOfferShownThisSession, saveCoachOfferIntentFromUrl } from "@/lib/coachOfferIntent";
 
 const PUBLIC_PATHS = new Set([
   "/login",
@@ -44,11 +44,12 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (redirectTo) {
       if (pathname === "/login" && typeof window !== "undefined") {
+        if (user?.id) clearCoachOfferShownThisSession(user.id);
         saveCoachOfferIntentFromUrl(new URLSearchParams(window.location.search));
       }
       router.replace(redirectTo);
     }
-  }, [pathname, redirectTo, router]);
+  }, [pathname, redirectTo, router, user?.id]);
 
   // Konten marketing harus langsung tersedia pada HTML awal untuk crawler;
   // route ini tidak membaca data user dan tidak perlu menunggu pemulihan sesi.

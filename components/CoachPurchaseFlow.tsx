@@ -10,7 +10,7 @@ type CoachPurchaseFlowProps = {
   onClose: () => void;
   onActivated?: () => void;
   returnOrderId?: string | null;
-  placement?: "dashboard" | "profile" | "referral_link";
+  placement?: "dashboard" | "profile" | "referral_link" | "session_start";
 };
 
 type PurchaseStep = "offer" | "checkout";

@@ -10,7 +10,6 @@ import type { CoachProgramRecommendation } from "@/lib/coachProgramRecommendatio
 import type { CoachGoal } from "@/lib/types";
 import CoachIcon from "./CoachIcon";
 import CoachPurchaseFlow from "./CoachPurchaseFlow";
-import { consumeCoachOfferIntent, hasCoachOfferIntent } from "@/lib/coachOfferIntent";
 
 function createCoachProgramId(): string {
   return `p_${Date.now()}_${crypto.randomUUID()}`;
@@ -23,10 +22,9 @@ export default function CoachEntry({ placement = "profile" }: { placement?: "das
   const [open, setOpen] = useState(false);
   const [entitled, setEntitled] = useState(false);
   const [membershipLoaded, setMembershipLoaded] = useState(false);
-  const [membershipCheckSucceeded, setMembershipCheckSucceeded] = useState(false);
   const [paywallOpen, setPaywallOpen] = useState(false);
   const [returnOrderId, setReturnOrderId] = useState<string | null>(null);
-  const [purchasePlacement, setPurchasePlacement] = useState<"dashboard" | "profile" | "referral_link">(placement);
+  const [purchasePlacement, setPurchasePlacement] = useState<"dashboard" | "profile">(placement);
 
   const handleCoachActivated = useCallback(() => {
     setEntitled(true);
@@ -49,7 +47,6 @@ export default function CoachEntry({ placement = "profile" }: { placement?: "das
         if (error) { if (active) setMembershipLoaded(true); return; }
         const isActive = data?.status === "active" && (!data.current_period_end || data.current_period_end > new Date().toISOString());
         if (active) setEntitled(Boolean(isActive));
-        if (active) setMembershipCheckSucceeded(true);
         if (active) setMembershipLoaded(true);
       } catch {
         if (active) setMembershipLoaded(true);
@@ -72,14 +69,6 @@ export default function CoachEntry({ placement = "profile" }: { placement?: "das
     url.searchParams.delete("orderId");
     window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
   }, [membershipLoaded]);
-
-  useEffect(() => {
-    if (placement !== "dashboard" || !membershipLoaded || !membershipCheckSucceeded || !hasCoachOfferIntent()) return;
-    const hadOfferIntent = consumeCoachOfferIntent();
-    if (!hadOfferIntent || entitled) return;
-    setPurchasePlacement("referral_link");
-    setPaywallOpen(true);
-  }, [entitled, membershipCheckSucceeded, membershipLoaded, placement]);
 
   const openPurchase = useCallback(() => {
     setPurchasePlacement(placement);
