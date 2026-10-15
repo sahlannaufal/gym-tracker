@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import CoachSheet from "./CoachSheet";
 import { useCoachGoal } from "@/lib/useCoachGoal";
 import { useTrainingPrograms } from "@/lib/useTrainingPrograms";
@@ -21,6 +21,9 @@ export default function CoachEntry({ placement = "profile" }: { placement?: "das
   const [entitled, setEntitled] = useState(false);
   const [membershipLoaded, setMembershipLoaded] = useState(false);
   const [paywallOpen, setPaywallOpen] = useState(false);
+  const [returnOrderId, setReturnOrderId] = useState<string | null>(null);
+
+  const handleCoachActivated = useCallback(() => setEntitled(true), []);
 
   useEffect(() => {
     let active = true;
@@ -36,6 +39,20 @@ export default function CoachEntry({ placement = "profile" }: { placement?: "das
     void loadMembership();
     return () => { active = false; };
   }, []);
+
+  useEffect(() => {
+    if (!membershipLoaded) return;
+    const url = new URL(window.location.href);
+    if (url.searchParams.get("coach_payment") !== "return") return;
+    const orderId = url.searchParams.get("orderId");
+    if (!orderId) return;
+
+    setReturnOrderId(orderId);
+    setPaywallOpen(true);
+    url.searchParams.delete("coach_payment");
+    url.searchParams.delete("orderId");
+    window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
+  }, [membershipLoaded]);
 
   async function acceptRecommendation(input: Parameters<typeof saveGoal>[0], recommendation: CoachProgramRecommendation): Promise<void> {
     if (!supabase) throw new Error("Coach memerlukan koneksi akun.");
@@ -104,7 +121,7 @@ export default function CoachEntry({ placement = "profile" }: { placement?: "das
           </button>
         </div>
       </section>}
-      {membershipLoaded && <CoachPurchaseFlow open={paywallOpen} onClose={() => setPaywallOpen(false)} onActivated={() => setEntitled(true)} />}
+      {membershipLoaded && <CoachPurchaseFlow open={paywallOpen} onClose={() => setPaywallOpen(false)} onActivated={handleCoachActivated} returnOrderId={returnOrderId} />}
       <CoachSheet open={open} goal={goal as CoachGoal | null} onClose={() => setOpen(false)} onUseRecommendation={acceptRecommendation} />
     </>
   );

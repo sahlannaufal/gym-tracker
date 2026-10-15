@@ -151,7 +151,10 @@ export async function POST(request: Request) {
         name,
         email,
         mobile,
-        redirectUrl: new URL("/account?coach_payment=return", process.env.APP_BASE_URL ?? new URL(request.url).origin).toString(),
+        redirectUrl: new URL(
+          `/account?coach_payment=return&orderId=${encodeURIComponent(order.id)}`,
+          process.env.APP_BASE_URL ?? new URL(request.url).origin,
+        ).toString(),
         description: "Coach Personal — akses selamanya",
         expiredAt: invoiceExpiry.toISOString(),
         items: [{ quantity: 1, rate: amount, description: "Akses Coach Personal selamanya" }],
