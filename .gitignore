@@ -1,5 +1,7 @@
 # dependencies
 /node_modules
+/output/
+/video/
 
 # next.js
 /.next/
@@ -10,6 +12,9 @@
 *.pem
 
 # env
+.env
+.env.*
+!.env.example
 .env*.local
 
 # typescript

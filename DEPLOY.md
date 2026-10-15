@@ -10,7 +10,7 @@ App PWA (Next.js). Data utama di **LocalStorage browser (offline-first)** dengan
 
 ## 0. (Opsional) Siapkan Supabase
 1. Buat project di https://supabase.com → **Project Settings → API**: catat **Project URL** & **anon key** (bukan `service_role`).
-2. Buka **SQL Editor** → paste isi `supabase/migrations/0001_init.sql` → **Run** (membuat tabel `workouts`, `routine`, + RLS).
+2. Buka **SQL Editor** → jalankan isi `supabase/migrations/*.sql` satu per satu sesuai urutan nomor yang tersedia (saat ini 0001 → 0012). `0006` membuat tabel `blog_posts` + bucket Storage `blog-images`, `0007` men-seed artikel blog, `0008` membuat fondasi Coach, `0009` membatasi penulisan versi program Coach, `0010` menambah ledger pembayaran, `0011` menyelaraskan validasi program, dan `0012` mengubah entitlement Coach menjadi akses permanen.
 3. **Authentication → Providers → Email**: untuk MVP boleh matikan "Confirm email".
 4. Di VPS, buat file `.env` di folder project:
    ```bash
@@ -59,7 +59,21 @@ SUPABASE_URL=https://xxxx.supabase.co
 SUPABASE_ANON_KEY=your_supabase_anon_key
 NEXT_PUBLIC_MIXPANEL_TOKEN=your_mixpanel_project_token
 NEXT_PUBLIC_APP_ENV=production
+SUPABASE_SERVICE_ROLE_KEY=<server-only service_role key>
+MAYAR_API_KEY=<Mayar Read & Write API key>
+MAYAR_API_BASE_URL=https://api.mayar.id/hl/v2
+COACH_PRICE_IDR=<harga dalam rupiah, bilangan bulat>
+APP_BASE_URL=https://gym.abadikan.com
 ```
+
+`SUPABASE_SERVICE_ROLE_KEY`, `MAYAR_API_KEY`, dan harga Coach dipakai saat runtime oleh endpoint server. Jangan menaruhnya pada variabel `NEXT_PUBLIC_*`. `APP_BASE_URL` dipakai sebagai URL kembali setelah checkout. Untuk sandbox, gunakan API key sandbox dan `MAYAR_API_BASE_URL=https://api.mayar.io/hl/v2`.
+
+## 4. Siapkan Mayar untuk pembayaran Coach
+1. Dari dashboard Mayar yang sudah terverifikasi, buat API key dengan akses API yang diperlukan untuk membuat invoice dan membaca transaksi. Simpan sebagai `MAYAR_API_KEY` di `.env` VPS; jangan kirim key melalui chat atau menaruhnya di frontend.
+2. Pastikan `MAYAR_API_BASE_URL=https://api.mayar.id/hl/v2` untuk transaksi production dan isi `COACH_PRICE_IDR` dengan harga akses Coach selamanya.
+3. Di Mayar buka **Integration → Webhook**, masukkan `https://gym.abadikan.com/api/payments/mayar/webhook`, simpan, lalu gunakan tombol tes URL. Event `testing` hanya dikonfirmasi endpoint dan tidak mengaktifkan akses. Event pembayaran baru diproses setelah konfigurasi runtime lengkap.
+4. Checkout membuat invoice server-side dan pengguna membayar pada halaman hosted Mayar. Webhook `payment.received` hanya memicu pemeriksaan; server membaca detail transaksi dari API Mayar dan mencocokkan ID, nominal, serta order sebelum RPC Supabase mengaktifkan akses. Tombol pemeriksaan status di aplikasi juga melakukan pemeriksaan server-side jika webhook terlambat.
+5. Setelah mengubah `.env`, terapkan environment baru pada layanan aplikasi (`docker compose up -d --build`). Uji dulu dengan API key dan akun sandbox sebelum mengaktifkan pembayaran production.
 
 > Variabel publik Supabase dan Mixpanel di-inline saat **build** melalui build args. Jika image pernah dibuat tanpa env tersebut, jalankan ulang dengan `--build`. Jangan memasukkan Mixpanel API Secret ke frontend.
 
@@ -84,3 +98,4 @@ docker compose pull && docker compose up -d --build   # update setelah push baru
 - **PWA tidak bisa install di HP**: PWA butuh HTTPS. Caddy menangani otomatis — pastikan kamu akses lewat `https://` (bukan IP).
 - **Login/sync tidak muncul**: pastikan file `.env` ada di VPS dan build ulang dengan `docker compose up -d --build`.
 - **Mixpanel tidak menerima event**: pastikan `NEXT_PUBLIC_MIXPANEL_TOKEN` dan `NEXT_PUBLIC_APP_ENV=production` ada di `.env` sebelum build, lalu rebuild image dan bersihkan cache PWA lama.
+- **Checkout Coach belum tersedia**: pastikan migration `0010_coach_payments.sql` sudah dijalankan dan `SUPABASE_SERVICE_ROLE_KEY`, `MAYAR_API_KEY`, `MAYAR_API_BASE_URL`, serta `COACH_PRICE_IDR` sudah diisi di environment runtime.

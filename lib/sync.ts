@@ -30,12 +30,38 @@ export type SyncState =
   | "idle"
   | "syncing"
   | "synced"
+  | "offline"
   | "error";
+
+export type SyncTarget =
+  | "workouts"
+  | "programs"
+  | "coach_goal"
+  | "custom_exercises"
+  | "body_measurements";
+
+export interface SyncFailure {
+  target: SyncTarget;
+  code?: string;
+  message: string;
+  detail?: string;
+}
 
 export interface SyncStatus {
   state: SyncState;
   lastSync?: string;
+  failure?: SyncFailure;
 }
+
+export const SYNC_TARGET_LABEL: Record<SyncTarget, string> = {
+  workouts: "riwayat latihan",
+  programs: "program dan jadwal",
+  coach_goal: "profil Coach",
+  custom_exercises: "latihan custom",
+  body_measurements: "pengukuran tubuh",
+};
+
+const PAGE_SIZE = 500;
 
 let status: SyncStatus = {
   state: isSyncConfigured() ? "idle" : "unconfigured",
@@ -61,8 +87,10 @@ export function subscribeSyncStatus(cb: (s: SyncStatus) => void): () => void {
 let currentUserId: string | null = null;
 
 export function setSyncUser(id: string | null): void {
+  const changed = currentUserId !== id;
   currentUserId = id;
   setStorageUser(id);
+  if (changed) setStatus({ state: isSyncConfigured() ? "idle" : "unconfigured" });
 }
 
 type WorkoutRow = {
@@ -175,6 +203,72 @@ async function deleteBodyMeasurementFromCloud(
   return remaining === null;
 }
 
+async function deleteWorkoutFromCloud(id: string, userId: string): Promise<boolean> {
+  if (!supabase) return false;
+
+  const { error: deleteError } = await supabase
+    .from("workouts")
+    .delete()
+    .eq("id", id)
+    .eq("user_id", userId);
+  if (deleteError) throw deleteError;
+
+  const { data: remaining, error: verifyError } = await supabase
+    .from("workouts")
+    .select("id")
+    .eq("id", id)
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (verifyError) throw verifyError;
+
+  return remaining === null;
+}
+
+function describeSyncFailure(target: SyncTarget, error: unknown): SyncFailure {
+  const value = typeof error === "object" && error !== null
+    ? error as { code?: unknown; message?: unknown; details?: unknown; hint?: unknown; status?: unknown }
+    : {};
+  const code = typeof value.code === "string" ? value.code : undefined;
+  const parts = [value.message, value.details, value.hint]
+    .filter((part): part is string => typeof part === "string" && part.length > 0);
+  if (typeof value.status === "number" || typeof value.status === "string") {
+    parts.push(`HTTP ${value.status}`);
+  }
+  let detail = parts.join(" | ");
+  if (!detail) {
+    if (error instanceof Error) {
+      detail = error.message || error.name;
+    } else if (typeof error === "string") {
+      detail = error;
+    } else {
+      try {
+        detail = JSON.stringify(error) ?? String(error);
+      } catch {
+        detail = String(error);
+      }
+    }
+  }
+  const normalized = detail.toLowerCase();
+  let message = `Sinkronisasi ${SYNC_TARGET_LABEL[target]} gagal. Data lokal tetap tersimpan; coba lagi.`;
+
+  if (code === "42501" || code === "PGRST301" || normalized.includes("jwt")) {
+    message = `Akses ke ${SYNC_TARGET_LABEL[target]} ditolak. Masuk kembali dan periksa kebijakan akses Supabase.`;
+  } else if (code === "PGRST205" && target === "coach_goal") {
+    message = "Supabase API belum mengenali tabel coach_goals. Pastikan migration 0004 berjalan pada project yang dipakai aplikasi, lalu muat ulang schema cache.";
+  } else if (
+    code === "42P01" || code === "42703" || code === "PGRST204" || code === "PGRST205" ||
+    normalized.includes("schema cache") || normalized.includes("does not exist")
+  ) {
+    message = `Skema ${SYNC_TARGET_LABEL[target]} belum tersedia di Supabase. Periksa migrasi database.`;
+  } else if (
+    normalized.includes("failed to fetch") || normalized.includes("network") || normalized.includes("timeout")
+  ) {
+    message = `Koneksi terputus saat menyinkronkan ${SYNC_TARGET_LABEL[target]}. Data lokal tetap tersimpan.`;
+  }
+
+  return { target, code, message, detail };
+}
+
 async function getUserId(): Promise<string | null> {
   if (currentUserId) return currentUserId;
   if (!supabase) return null;
@@ -212,29 +306,33 @@ export async function syncAll(userId: string): Promise<void> {
   activeSyncPromise = (async () => {
   const syncStartedAt = Date.now();
   let syncedWorkoutCount = 0;
+  let syncTarget: SyncTarget = "workouts";
   setStatus({ state: "syncing" });
   try {
     // 1. Proses hapus yang tertunda saat offline
     for (const id of loadPendingDeletes(userId)) {
-      const { error } = await supabase
-        .from("workouts")
-        .delete()
-        .eq("id", id)
-        .eq("user_id", userId);
-      if (!error) {
-        removePendingDelete(id, userId);
-        syncedWorkoutCount += 1;
-      }
+      const deleted = await deleteWorkoutFromCloud(id, userId);
+      if (!deleted) throw new Error(`Penghapusan workout ${id} belum terkonfirmasi.`);
+      removePendingDelete(id, userId);
+      syncedWorkoutCount += 1;
     }
     const pending = new Set(loadPendingDeletes(userId));
 
     // 2. Pull server
-    const { data, error } = await supabase
-      .from("workouts")
-      .select("*")
-      .eq("user_id", userId);
-    if (error) throw error;
-    const serverRows = (data ?? []) as WorkoutRow[];
+    const serverRows: WorkoutRow[] = [];
+    for (let from = 0; ; from += PAGE_SIZE) {
+      const { data, error } = await supabase
+        .from("workouts")
+        .select("*")
+        .eq("user_id", userId)
+        .order("date", { ascending: true })
+        .order("id", { ascending: true })
+        .range(from, from + PAGE_SIZE - 1);
+      if (error) throw error;
+      const page = (data ?? []) as WorkoutRow[];
+      serverRows.push(...page);
+      if (page.length < PAGE_SIZE) break;
+    }
 
     // 3. Merge last-write-wins
     const local = loadWorkouts(userId);
@@ -287,6 +385,7 @@ export async function syncAll(userId: string): Promise<void> {
     replaceWorkouts([...merged.values()], userId);
 
     // 5. Program latihan + pilihan per tanggal (satu dokumen per user).
+    syncTarget = "programs";
     const { data: routineRow, error: routinePullErr } = await supabase
       .from("routine")
       .select("programs, schedule, program_updated_at")
@@ -296,10 +395,12 @@ export async function syncAll(userId: string): Promise<void> {
 
     const localPrograms = loadTrainingProgramStore(userId);
     const localHasContent = localPrograms.programs.length > 0 || Object.keys(localPrograms.schedule).length > 0;
+    const localHasSnapshot = localHasContent || Boolean(localPrograms.updatedAt);
     const serverPrograms = (routineRow?.programs ?? []) as TrainingProgramStore["programs"];
     const serverSchedule = (routineRow?.schedule ?? {}) as TrainingProgramStore["schedule"];
     const serverHasContent = serverPrograms.length > 0 || Object.keys(serverSchedule).length > 0;
     const serverUpdatedAt = routineRow?.program_updated_at as string | undefined;
+    const serverHasSnapshot = serverHasContent || Boolean(serverUpdatedAt);
 
     // Local lebih baru / belum ada di server -> upload
     const localUpdatedAt = localPrograms.updatedAt;
@@ -307,7 +408,7 @@ export async function syncAll(userId: string): Promise<void> {
       !!localUpdatedAt &&
       (!serverUpdatedAt || localUpdatedAt > serverUpdatedAt);
 
-    if (localHasContent && (!serverHasContent || localIsNewer)) {
+    if (localHasSnapshot && (!serverHasSnapshot || localIsNewer)) {
       const { error: routineErr } = await supabase.from("routine").upsert({
         id: userId,
         programs: localPrograms.programs,
@@ -315,7 +416,7 @@ export async function syncAll(userId: string): Promise<void> {
         program_updated_at: localUpdatedAt ?? new Date().toISOString(),
       });
       if (routineErr) throw routineErr;
-    } else if (serverHasContent) {
+    } else if (serverHasSnapshot) {
       // Server lebih baru -> tarik ke lokal (ikut sertakan timestamp server)
       saveTrainingProgramStore({
         version: 1,
@@ -326,6 +427,7 @@ export async function syncAll(userId: string): Promise<void> {
     }
 
     // 6. Goal Coach — satu dokumen per user, last-write-wins by updated_at.
+    syncTarget = "coach_goal";
     const { data: coachRow, error: coachPullError } = await supabase
       .from("coach_goals")
       .select("goal, updated_at")
@@ -350,6 +452,7 @@ export async function syncAll(userId: string): Promise<void> {
     }
 
     // 7. Daftar latihan custom — satu dokumen per user, last-write-wins.
+    syncTarget = "custom_exercises";
     const { data: customLibraryRow, error: customLibraryError } = await supabase
       .from("custom_exercise_libraries")
       .select("exercises, updated_at")
@@ -360,8 +463,9 @@ export async function syncAll(userId: string): Promise<void> {
     const localCustomStore = loadCustomExerciseStore(userId);
     const serverCustomUpdatedAt = customLibraryRow?.updated_at as string | undefined;
     const serverCustomExercises = (customLibraryRow?.exercises ?? []) as CustomExerciseStore["exercises"];
+    const localCustomHasSnapshot = localCustomStore.exercises.length > 0 || Boolean(localCustomStore.updatedAt);
     const localCustomIsNewer =
-      localCustomStore.exercises.length > 0 &&
+      localCustomHasSnapshot &&
       (!serverCustomUpdatedAt || (!!localCustomStore.updatedAt && localCustomStore.updatedAt > serverCustomUpdatedAt));
     if (localCustomIsNewer) {
       const { error: customUpsertError } = await supabase.from("custom_exercise_libraries").upsert({
@@ -379,6 +483,7 @@ export async function syncAll(userId: string): Promise<void> {
     }
 
     // 8. Riwayat komposisi tubuh — cache lokal dipisahkan per user.
+    syncTarget = "body_measurements";
     for (const id of loadBodyMeasurementDeletes(userId)) {
       const deleted = await deleteBodyMeasurementFromCloud(id, userId);
       if (!deleted) {
@@ -387,11 +492,20 @@ export async function syncAll(userId: string): Promise<void> {
       removeBodyMeasurementDelete(userId, id);
     }
     const bodyPending = new Set(loadBodyMeasurementDeletes(userId));
-    const { data: bodyData, error: bodyError } = await supabase
-      .from("body_measurements")
-      .select("*")
-      .eq("user_id", userId);
-    if (bodyError) throw bodyError;
+    const bodyData: BodyMeasurementRow[] = [];
+    for (let from = 0; ; from += PAGE_SIZE) {
+      const { data, error } = await supabase
+        .from("body_measurements")
+        .select("*")
+        .eq("user_id", userId)
+        .order("measured_at", { ascending: true })
+        .order("id", { ascending: true })
+        .range(from, from + PAGE_SIZE - 1);
+      if (error) throw error;
+      const page = (data ?? []) as BodyMeasurementRow[];
+      bodyData.push(...page);
+      if (page.length < PAGE_SIZE) break;
+    }
 
     const bodyServerMap = new Map(
       ((bodyData ?? []) as BodyMeasurementRow[]).map((row) => [row.id, row]),
@@ -441,8 +555,12 @@ export async function syncAll(userId: string): Promise<void> {
         sync_duration_ms: Date.now() - syncStartedAt,
       });
     }
-  } catch {
-    setStatus({ state: "error" });
+  } catch (error) {
+    const failure = describeSyncFailure(syncTarget, error);
+    // Keep this as a warning: console.error is surfaced as a Next dev overlay
+    // error and can hide the actual Supabase failure behind an empty object.
+    console.warn(`[sync] Synchronization failed: ${JSON.stringify(failure)}`);
+    setStatus({ state: "error", lastSync: status.lastSync, failure });
   } finally {
     inFlight = false;
     activeSyncPromise = null;
@@ -464,7 +582,10 @@ export async function syncAll(userId: string): Promise<void> {
  */
 export async function requestSync(): Promise<void> {
   if (!isSyncConfigured()) return;
-  if (typeof navigator !== "undefined" && !navigator.onLine) return;
+  if (typeof navigator !== "undefined" && !navigator.onLine) {
+    setStatus({ state: "offline", lastSync: status.lastSync });
+    return;
+  }
   const userId = await getUserId();
   if (!userId) return;
   try {

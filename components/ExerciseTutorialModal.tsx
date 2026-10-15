@@ -59,9 +59,11 @@ function label(value: string) {
 
 export default function ExerciseTutorialModal({
   exercise,
+  exerciseId,
   onClose,
 }: {
   exercise?: string;
+  exerciseId?: string;
   onClose: () => void;
 }) {
   const [tutorial, setTutorial] = useState<ExerciseTutorial>();
@@ -78,7 +80,7 @@ export default function ExerciseTutorialModal({
     setError("");
     setGifError(false);
 
-    loadExerciseTutorial(exercise)
+    loadExerciseTutorial(exercise, exerciseId)
       .then((result) => {
         if (!active) return;
         setTutorial(result);
@@ -93,7 +95,7 @@ export default function ExerciseTutorialModal({
     return () => {
       active = false;
     };
-  }, [exercise]);
+  }, [exercise, exerciseId]);
 
   useEffect(() => {
     if (!exercise) return;

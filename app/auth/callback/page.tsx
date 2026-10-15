@@ -6,7 +6,6 @@ import Link from "next/link";
 import { isSyncConfigured, supabase } from "@/lib/supabase/client";
 import { identifyAndSetUser, trackEvent } from "@/lib/analytics";
 import { consumeOAuthIntent, type OAuthIntent } from "@/lib/oauthIntent";
-import { requestSync } from "@/lib/sync";
 import { consumeMarketingAttribution } from "@/lib/marketingAttribution";
 
 type CallbackState =
@@ -93,7 +92,6 @@ export default function AuthCallbackPage() {
           }
           trackEvent("Login Completed", { login_method: "google", ...attribution });
         }
-        requestSync();
         setState({ status: "success" });
         window.setTimeout(() => router.replace("/"), 1200);
       } else if (hadAuthTokenInUrl()) {

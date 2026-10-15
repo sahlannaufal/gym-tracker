@@ -3,6 +3,9 @@
 import { useEffect, useState } from "react";
 import { useTrainingPrograms } from "@/lib/useTrainingPrograms";
 import { useCustomExercises } from "@/lib/useCustomExercises";
+import { useWorkouts } from "@/lib/useWorkouts";
+import { useCoachGoal } from "@/lib/useCoachGoal";
+import { todayLocalISO } from "@/lib/format";
 import type { TrainingProgram } from "@/lib/types";
 import ExerciseCatalogPicker from "./ExerciseCatalogPicker";
 import ExerciseTutorialModal from "./ExerciseTutorialModal";
@@ -148,10 +151,13 @@ function ProgramForm({
 
 export default function RoutineEditor() {
   const { store, addProgram, updateProgram, deleteProgram } = useTrainingPrograms();
+  const { workouts } = useWorkouts();
+  const { goal } = useCoachGoal();
   const { customExercises, addCustomExercise } = useCustomExercises();
   const [editingId, setEditingId] = useState<string | "new" | null>(null);
   const [expandedProgramIds, setExpandedProgramIds] = useState<Set<string>>(new Set());
   const [tutorialExercise, setTutorialExercise] = useState<string>();
+  const [programToDelete, setProgramToDelete] = useState<TrainingProgram | null>(null);
 
   const toggleProgram = (programId: string) => {
     setExpandedProgramIds((current) => {
@@ -166,8 +172,31 @@ export default function RoutineEditor() {
     if (editingId && editingId !== "new" && !store?.programs.some((item) => item.id === editingId)) setEditingId(null);
   }, [editingId, store]);
 
+  useEffect(() => {
+    if (!programToDelete) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setProgramToDelete(null);
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [programToDelete]);
+
   if (!store) return <p className="text-gray-500">Memuat...</p>;
   const editing = editingId === "new" ? undefined : store.programs.find((item) => item.id === editingId);
+  const today = todayLocalISO();
+  const [year, month, day] = today.split("-").map(Number);
+  const weekStartDate = new Date(year, month - 1, day);
+  weekStartDate.setDate(weekStartDate.getDate() - ((weekStartDate.getDay() + 6) % 7));
+  const weekStart = `${weekStartDate.getFullYear()}-${String(weekStartDate.getMonth() + 1).padStart(2, "0")}-${String(weekStartDate.getDate()).padStart(2, "0")}`;
+
+  const programUsageThisWeek = (programId: string, exercises: string[]) => {
+    const assignedDates = Object.entries(store.schedule)
+      .filter(([date, assignment]) => date >= weekStart && date <= today && assignment.programId === programId)
+      .map(([date]) => date);
+    return assignedDates.some((date) => workouts.some(
+      (workout) => workout.date === date && exercises.includes(workout.exercise),
+    ));
+  };
 
   return (
     <section className="space-y-5">
@@ -197,16 +226,27 @@ export default function RoutineEditor() {
         <ul className="space-y-3">
           {store.programs.map((program) => {
             const expanded = expandedProgramIds.has(program.id);
+            const usedThisWeek = programUsageThisWeek(program.id, program.exercises);
+            const isCoachProgram = program.name.startsWith("Coach · ");
+            const isCoachActive = program.coachStatus === "active" || (!program.coachStatus && goal?.programIds.includes(program.id));
             return (
             <li key={program.id} className="rounded-2xl border border-gray-800 bg-gray-900/50 p-4">
               <div className="flex items-center gap-2">
                 <button type="button" onClick={() => toggleProgram(program.id)} aria-expanded={expanded} className="min-w-0 flex-1 text-left">
                   <h2 className="truncate font-semibold text-gray-100">{program.name}</h2>
-                  <p className="mt-1 text-sm text-gray-500">{program.exercises.length} latihan</p>
+                  <div className="mt-1 flex flex-wrap items-center gap-2">
+                    <p className="text-sm text-gray-500">{program.exercises.length} latihan</p>
+                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${usedThisWeek ? "bg-lime-400/10 text-lime-300" : "bg-gray-800 text-gray-400"}`}>
+                      {usedThisWeek ? "Telah digunakan" : "Belum digunakan"}
+                    </span>
+                    {isCoachProgram && <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${isCoachActive ? "bg-emerald-400/10 text-emerald-300" : "bg-gray-800 text-gray-400"}`}>
+                      {isCoachActive ? "Aktif" : "Nonaktif"}
+                    </span>}
+                  </div>
                 </button>
                 <div className="flex shrink-0 gap-2">
                   <button type="button" onClick={() => setEditingId(program.id)} className="rounded-lg border border-gray-700 px-3 py-1.5 text-sm text-gray-300 hover:bg-gray-800">Edit</button>
-                  <button type="button" onClick={() => { if (window.confirm(`Hapus program ${program.name}? Jadwal yang memakainya akan dilepas.`)) deleteProgram(program.id); }} className="rounded-lg border border-red-900/70 px-3 py-1.5 text-sm text-red-400 hover:bg-red-950/50">Hapus</button>
+                  <button type="button" onClick={() => setProgramToDelete(program)} className="rounded-lg border border-red-900/70 px-3 py-1.5 text-sm text-red-400 hover:bg-red-950/50">Hapus</button>
                 </div>
                 <button
                   type="button"
@@ -253,6 +293,43 @@ export default function RoutineEditor() {
         exercise={tutorialExercise}
         onClose={() => setTutorialExercise(undefined)}
       />
+      {programToDelete && (
+        <div
+          className="fixed inset-0 z-[80] flex items-end justify-center bg-black/70 p-4 backdrop-blur-sm sm:items-center"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setProgramToDelete(null);
+          }}
+        >
+          <section
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="delete-program-title"
+            aria-describedby="delete-program-description"
+            className="w-full max-w-sm rounded-2xl border border-gray-800 bg-gray-900 p-6 shadow-2xl"
+          >
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-red-500/10 text-red-400">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5" aria-hidden="true">
+                <path d="M3 6h18" />
+                <path d="M8 6V4h8v2" />
+                <path d="m19 6-1 14H6L5 6" />
+                <path d="M10 11v5m4-5v5" />
+              </svg>
+            </div>
+            <h2 id="delete-program-title" className="mt-4 text-lg font-bold text-gray-100">Hapus program?</h2>
+            <p id="delete-program-description" className="mt-2 text-sm leading-6 text-gray-400">
+              Program <span className="font-semibold text-gray-200">{programToDelete.name}</span> akan dihapus. Jadwal yang menggunakan program ini akan dilepas.
+            </p>
+            <div className="mt-6 grid grid-cols-2 gap-3">
+              <button type="button" onClick={() => setProgramToDelete(null)} className="rounded-xl border border-gray-700 px-4 py-2.5 text-sm font-semibold text-gray-200 transition-colors hover:bg-gray-800">Batal</button>
+              <button type="button" onClick={() => {
+                deleteProgram(programToDelete.id);
+                setProgramToDelete(null);
+              }} className="rounded-xl bg-red-500 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-red-400">Hapus program</button>
+            </div>
+          </section>
+        </div>
+      )}
     </section>
   );
 }

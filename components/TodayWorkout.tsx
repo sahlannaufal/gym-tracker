@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useTrainingPrograms } from "@/lib/useTrainingPrograms";
 import { useWorkouts } from "@/lib/useWorkouts";
+import { useCoachGoal } from "@/lib/useCoachGoal";
 import { DAY_LABELS } from "@/lib/types";
 import { formatDate, todayLocalISO, weekdayFromISO } from "@/lib/format";
 import type { Workout, WorkoutInput } from "@/lib/types";
@@ -329,6 +330,7 @@ export default function TodayWorkout({
   onOpenPrograms: () => void;
 }) {
   const { store, setAssignment, clearAssignment } = useTrainingPrograms();
+  const { goal } = useCoachGoal();
   const { workouts, addWorkout, updateWorkout, removeWorkout } = useWorkouts();
   const date = todayLocalISO();
   const [timerOpen, setTimerOpen] = useState(false);
@@ -352,6 +354,25 @@ export default function TodayWorkout({
     ? store.programs.find((program) => program.id === assignment.programId)
     : undefined;
   const exercises = selectedProgram?.exercises ?? [];
+  const coachProgramIds = new Set(goal?.programIds ?? []);
+  const coachPrograms = store.programs.filter((program) => coachProgramIds.has(program.id));
+  const coachProgramWasUsed = (programId: string, usedDate: string) => {
+    const program = coachPrograms.find((item) => item.id === programId);
+    return Boolean(program && workouts.some((workout) => workout.date === usedDate && program.exercises.includes(workout.exercise)));
+  };
+  const previousCoachUses = Object.entries(store.schedule)
+    .filter(([scheduledDate, scheduled]) => scheduledDate < date && !!scheduled.programId && coachProgramIds.has(scheduled.programId) && coachProgramWasUsed(scheduled.programId, scheduledDate))
+    .sort(([dateA], [dateB]) => dateB.localeCompare(dateA));
+  const lastUsedCoachId = previousCoachUses[0]?.[1].programId ?? null;
+  const lastUsedCoachIndex = goal?.programIds.findIndex((id) => id === lastUsedCoachId) ?? -1;
+  const nextCoachId = coachPrograms.length
+    ? goal?.programIds[((lastUsedCoachIndex + 1) % goal.programIds.length + goal.programIds.length) % goal.programIds.length]
+    : undefined;
+  const nextCoachProgram = coachPrograms.find((program) => program.id === nextCoachId) ?? coachPrograms[0];
+  const latestUseFor = (programId: string) => Object.entries(store.schedule)
+    .filter(([scheduledDate, scheduled]) => scheduledDate <= date && scheduled.programId === programId && coachProgramWasUsed(programId, scheduledDate))
+    .map(([scheduledDate]) => scheduledDate)
+    .sort((a, b) => b.localeCompare(a))[0];
   const entriesFor = (name: string) =>
     workouts.filter((workout) => workout.exercise === name && workout.date === date);
 
@@ -363,6 +384,16 @@ export default function TodayWorkout({
           {DAY_LABELS[day]}, {formatDate(date)}
         </p>
       </div>
+
+      {coachPrograms.length > 0 && <section className="rounded-2xl border border-lime-400/20 bg-lime-400/5 p-4">
+        <div className="flex items-center justify-between gap-3">
+          <div><p className="text-sm font-semibold text-lime-200">Rotasi Coach</p><p className="mt-1 text-xs text-gray-500">Pilih sesi berikutnya; program lain tetap tersedia untuk hari lain.</p></div>
+          <span className="shrink-0 rounded-full bg-gray-900 px-2.5 py-1 text-xs text-gray-400">{coachPrograms.length} sesi</span>
+        </div>
+        {nextCoachProgram && !assignment && <button type="button" onClick={() => setAssignment(date, nextCoachProgram.id)} className="mt-3 w-full rounded-xl bg-lime-400 px-4 py-2.5 text-left text-sm font-bold text-gray-950 hover:bg-lime-300">Pilih sesi berikutnya · {nextCoachProgram.name.replace("Coach · ", "")}</button>}
+        {previousCoachUses[0] && <p className="mt-2 text-xs text-gray-500">Terakhir dipakai {formatDate(previousCoachUses[0][0])}: {store.programs.find((program) => program.id === previousCoachUses[0][1].programId)?.name.replace("Coach · ", "")}</p>}
+        {selectedProgram && coachProgramIds.has(selectedProgram.id) && <p className={`mt-3 inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold ${coachProgramWasUsed(selectedProgram.id, date) ? "bg-lime-400/10 text-lime-200" : "bg-gray-900 text-gray-400"}`}>{coachProgramWasUsed(selectedProgram.id, date) ? <><svg className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="m4 10 4 4 8-8" /></svg>Sudah digunakan hari ini</> : "Belum digunakan hari ini"}</p>}
+      </section>}
 
       <div className="rounded-2xl border border-gray-800 bg-gray-900/50 p-4">
         <label className="block">
@@ -380,7 +411,7 @@ export default function TodayWorkout({
             <option value="__rest__">Rest Day</option>
             {store.programs.map((program) => (
               <option key={program.id} value={program.id}>
-                {program.name} · {program.exercises.length} latihan
+                {program.name} · {program.exercises.length} latihan{coachProgramIds.has(program.id) && latestUseFor(program.id) ? ` · dipakai ${latestUseFor(program.id) === date ? "hari ini" : formatDate(latestUseFor(program.id)!)}` : ""}
               </option>
             ))}
           </select>
@@ -410,9 +441,9 @@ export default function TodayWorkout({
         <div className="rounded-2xl border border-dashed border-red-900/70 p-8 text-center text-red-300">Program tidak ditemukan. Silakan pilih program lain.</div>
       ) : (
         <ul className="space-y-3">
-          {exercises.map((name) => (
+          {exercises.map((name, index) => (
             <ExerciseCard
-              key={name}
+              key={`${selectedProgram.id}-${selectedProgram.exerciseIds?.[index] ?? name}-${index}`}
               name={name}
               entries={entriesFor(name)}
               lastWorkout={[...workouts]

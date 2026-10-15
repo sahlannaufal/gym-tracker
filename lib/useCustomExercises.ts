@@ -16,7 +16,6 @@ export function useCustomExercises() {
     const refresh = () => setCustomExercises(loadCustomExerciseStore().exercises);
     refresh();
     window.addEventListener("custom-exercises-changed", refresh);
-    requestSync().then(refresh);
     return () => window.removeEventListener("custom-exercises-changed", refresh);
   }, []);
 

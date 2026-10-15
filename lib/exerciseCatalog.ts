@@ -68,9 +68,9 @@ function loadDetails(page: number): Promise<ExerciseTutorial[]> {
   return request;
 }
 
-export async function loadExerciseTutorial(exercise: string): Promise<ExerciseTutorial | undefined> {
+export async function loadExerciseTutorial(exercise: string, exerciseId?: string): Promise<ExerciseTutorial | undefined> {
   const catalog = await loadExerciseCatalog();
-  const item = catalog.find((candidate) => candidate.name === exercise);
+  const item = catalog.find((candidate) => exerciseId ? candidate.id === exerciseId : candidate.name === exercise);
   if (!item) return undefined;
   const details = await loadDetails(item.detailPage);
   return details.find((detail) => detail.id === item.id);

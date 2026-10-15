@@ -16,7 +16,6 @@ export function useTrainingPrograms() {
     const refresh = () => setStore(loadTrainingProgramStore());
     refresh();
     window.addEventListener("training-programs-changed", refresh);
-    requestSync().then(refresh);
     return () => window.removeEventListener("training-programs-changed", refresh);
   }, []);
 
@@ -32,20 +31,57 @@ export function useTrainingPrograms() {
     [],
   );
 
-  const addProgram = useCallback((name: string, exercises: string[]) => {
+  const addProgram = useCallback((name: string, exercises: string[], exerciseIds?: string[]) => {
     const now = new Date().toISOString();
     const program: TrainingProgram = {
-      id: makeId(), name: name.trim(), exercises, createdAt: now, updatedAt: now,
+      id: makeId(), name: name.trim(), exercises, exerciseIds, createdAt: now, updatedAt: now,
     };
     mutate((current) => ({ ...current, programs: [...current.programs, program] }));
     return program;
+  }, [mutate]);
+
+  const activateCoachPrograms = useCallback((programIds: string[], drafts: Array<{ name: string; exercises: string[]; exerciseIds?: string[] }>, replacementIds?: string[]) => {
+    const now = new Date().toISOString();
+    const replacements: TrainingProgram[] = drafts.map((draft, index) => ({
+      id: replacementIds?.[index] ?? makeId(),
+      name: draft.name.trim(),
+      exercises: draft.exercises,
+      exerciseIds: draft.exerciseIds,
+      coachStatus: "active",
+      createdAt: now,
+      updatedAt: now,
+    }));
+    mutate((current) => {
+      // Tandai versi Coach sebelumnya nonaktif, termasuk data lama tanpa status.
+      const oldIds = new Set([
+        ...programIds,
+        ...current.programs.filter((program) => program.name.startsWith("Coach · ")).map((program) => program.id),
+      ]);
+      return {
+        ...current,
+        programs: [
+          ...current.programs.map((program) => oldIds.has(program.id) ? { ...program, coachStatus: "inactive" as const, updatedAt: now } : program),
+          ...replacements,
+        ],
+      };
+    });
+    return replacements;
   }, [mutate]);
 
   const updateProgram = useCallback((id: string, name: string, exercises: string[]) => {
     mutate((current, now) => ({
       ...current,
       programs: current.programs.map((program) =>
-        program.id === id ? { ...program, name: name.trim(), exercises, updatedAt: now } : program,
+        program.id === id ? {
+          ...program,
+          name: name.trim(),
+          exercises,
+          exerciseIds: exercises.map((exercise) => {
+            const previousIndex = program.exercises.indexOf(exercise);
+            return previousIndex >= 0 ? program.exerciseIds?.[previousIndex] ?? null : null;
+          }),
+          updatedAt: now,
+        } : program,
       ),
     }));
   }, [mutate]);
@@ -75,5 +111,5 @@ export function useTrainingPrograms() {
     });
   }, [mutate]);
 
-  return { store, addProgram, updateProgram, deleteProgram, setAssignment, clearAssignment };
+  return { store, addProgram, activateCoachPrograms, updateProgram, deleteProgram, setAssignment, clearAssignment };
 }

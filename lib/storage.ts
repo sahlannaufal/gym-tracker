@@ -290,6 +290,10 @@ function normalizeTrainingProgram(value: unknown): TrainingProgram | null {
     exercises: raw.exercises.filter(
       (item): item is string => typeof item === "string" && item.trim().length > 0,
     ),
+    exerciseIds: Array.isArray(raw.exerciseIds)
+      ? raw.exerciseIds.map((item): string | null => typeof item === "string" && item.trim().length > 0 ? item : null)
+      : undefined,
+    coachStatus: raw.coachStatus === "active" || raw.coachStatus === "inactive" ? raw.coachStatus : undefined,
     createdAt: raw.createdAt,
     updatedAt: raw.updatedAt,
   };
@@ -380,7 +384,7 @@ function normalizeCoachGoal(value: unknown): CoachGoal | null {
   const raw = value as Record<string, unknown>;
   if (
     raw.version !== 1 ||
-    raw.type !== "build_muscle" ||
+    !["build_muscle", "lose_fat", "build_strength", "general_fitness"].includes(String(raw.type)) ||
     typeof raw.weeklySessionTarget !== "number" ||
     !Number.isInteger(raw.weeklySessionTarget) ||
     raw.weeklySessionTarget < 1 ||
@@ -391,9 +395,41 @@ function normalizeCoachGoal(value: unknown): CoachGoal | null {
   ) return null;
   return {
     version: 1,
-    type: "build_muscle",
+    type: raw.type as CoachGoal["type"],
+    focus:
+      raw.focus === "chest" || raw.focus === "back" || raw.focus === "shoulders" ||
+      raw.focus === "arms" || raw.focus === "core" || raw.focus === "legs"
+        ? raw.focus
+        : "full_body",
+    focuses: Array.isArray(raw.focuses)
+      ? raw.focuses.filter((item): item is import("./types").CoachMuscleFocus =>
+          ["chest", "back", "shoulders", "arms", "core", "legs"].includes(String(item)))
+      : raw.focus === "full_body" ? [] : [raw.focus as import("./types").CoachMuscleFocus],
     weeklySessionTarget: raw.weeklySessionTarget,
+    sessionDurationMinutes:
+      raw.sessionDurationMinutes === 30 || raw.sessionDurationMinutes === 60
+        ? raw.sessionDurationMinutes
+        : 45,
     programId: raw.programId,
+    programIds: Array.isArray(raw.programIds)
+      ? raw.programIds.filter((item): item is string => typeof item === "string" && item.length > 0)
+      : typeof raw.programId === "string" && raw.programId.length > 0
+        ? [raw.programId]
+        : [],
+    trainingExperience:
+      raw.trainingExperience === "intermediate" || raw.trainingExperience === "advanced"
+        ? raw.trainingExperience
+        : "beginner",
+    equipmentAccess:
+      raw.equipmentAccess === "limited_gym" ||
+      raw.equipmentAccess === "home_gym" ||
+      raw.equipmentAccess === "bodyweight"
+        ? raw.equipmentAccess
+        : "full_gym",
+    equipmentIds: Array.isArray(raw.equipmentIds)
+      ? raw.equipmentIds.filter((item): item is import("./types").CoachEquipmentId =>
+          ["dumbbells", "barbell", "bench", "bands", "pullup_bar", "cable_machine", "machines", "kettlebell", "bodyweight"].includes(String(item)))
+      : undefined,
     startedAt: raw.startedAt,
     updatedAt: raw.updatedAt,
   };

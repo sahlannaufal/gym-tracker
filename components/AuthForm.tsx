@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { isSyncConfigured, supabase } from "@/lib/supabase/client";
-import { requestSync } from "@/lib/sync";
 import { identifyAndSetUser, trackEvent } from "@/lib/analytics";
 import { consumeOAuthIntent, saveOAuthIntent } from "@/lib/oauthIntent";
 import {
@@ -115,7 +114,6 @@ export default function AuthForm() {
         if (data.session) {
           identifyAndSetUser(data.session.user);
           trackEvent("Login Completed", { login_method: "email_password", ...attribution });
-          requestSync();
           router.replace("/");
           return;
         }
@@ -133,7 +131,6 @@ export default function AuthForm() {
         const attribution = consumeMarketingAttribution();
         identifyAndSetUser(data.user);
         trackEvent("Login Completed", { login_method: "email_password", ...attribution });
-        requestSync();
         router.replace("/");
       }
     } catch (err) {

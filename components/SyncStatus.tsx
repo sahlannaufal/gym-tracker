@@ -12,6 +12,7 @@ const DOT_COLOR: Record<SyncStatusType["state"], string> = {
   idle: "bg-amber-400",
   syncing: "bg-sky-400",
   synced: "bg-lime-400",
+  offline: "bg-amber-400",
   error: "bg-red-400",
 };
 
@@ -41,18 +42,20 @@ export default function SyncStatus({
     : status.state === "synced"
       ? `Tersinkron${formatLastSync(status.lastSync) ? ` · ${formatLastSync(status.lastSync)}` : ""}`
       : status.state === "error"
-        ? "Sinkronisasi gagal"
+        ? status.failure?.message ?? "Sinkronisasi gagal"
+        : status.state === "offline"
+          ? "Offline · perubahan tersimpan di perangkat"
         : status.state === "idle"
           ? "Belum tersinkron"
           : "Sinkronisasi belum diatur";
 
   return (
-    <div className="shrink-0" aria-live="polite" title={label}>
+    <div className="flex max-w-56 shrink-0 flex-col items-end" aria-live="polite" title={label}>
       <button
         type="button"
         onClick={onSync}
         disabled={disabled || syncing}
-        aria-label={syncing ? "Sedang menyinkronkan" : "Sinkronkan sekarang"}
+        aria-label={syncing ? "Sedang menyinkronkan" : `Sinkronkan sekarang. ${label}`}
         title={syncing ? "Sedang menyinkronkan" : "Sinkronkan sekarang"}
         className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-gray-700 text-gray-300 transition-colors hover:border-lime-400/60 hover:bg-lime-400/10 hover:text-lime-400 focus:outline-none focus:ring-2 focus:ring-lime-400/70 disabled:cursor-not-allowed disabled:opacity-50"
       >
@@ -76,6 +79,12 @@ export default function SyncStatus({
           aria-hidden
         />
       </button>
+      {(status.state === "error" || status.state === "offline") && (
+        <p className={`mt-1.5 max-w-56 text-right text-[10px] leading-4 ${status.state === "error" ? "text-red-300" : "text-amber-300"}`}>
+          {label}
+          {status.state === "error" && status.failure?.code && <span className="ml-1 text-gray-500">({status.failure.code})</span>}
+        </p>
+      )}
     </div>
   );
 }

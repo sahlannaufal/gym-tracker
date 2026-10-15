@@ -1,0 +1,201 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import CoachIcon from "./CoachIcon";
+import { supabase } from "@/lib/supabase/client";
+
+type CoachPurchaseFlowProps = {
+  open: boolean;
+  onClose: () => void;
+  onActivated?: () => void;
+};
+
+type PurchaseStep = "offer" | "checkout";
+
+function CheckIcon() {
+  return <svg aria-hidden="true" viewBox="0 0 20 20" fill="none" className="h-5 w-5 shrink-0 text-lime-300"><path d="m5 10 3.2 3.2L15.5 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>;
+}
+
+type PurchaseConfig = { available: boolean; amount: number | null; customerName: string; customerEmail: string };
+type PurchaseOrder = { id: string; status: "pending" | "paid" | "failed" | "expired"; checkout_url: string | null };
+
+function formatRupiah(amount: number): string {
+  return new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(amount);
+}
+
+export default function CoachPurchaseFlow({ open, onClose, onActivated }: CoachPurchaseFlowProps) {
+  const [step, setStep] = useState<PurchaseStep>("offer");
+  const [config, setConfig] = useState<PurchaseConfig | null>(null);
+  const [name, setName] = useState("");
+  const [mobile, setMobile] = useState("");
+  const [orderId, setOrderId] = useState("");
+  const [checkoutUrl, setCheckoutUrl] = useState("");
+  const [orderStatus, setOrderStatus] = useState<PurchaseOrder["status"] | "" >("");
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState("");
+
+  useEffect(() => {
+    if (!open) return;
+    setStep("offer");
+    setMessage("");
+    setOrderId("");
+    setCheckoutUrl("");
+    setOrderStatus("");
+    let active = true;
+    async function loadConfig() {
+      if (!supabase) return;
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) return;
+      const response = await fetch("/api/coach/checkout", {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+        cache: "no-store",
+      });
+      if (!response.ok) return;
+      const result = await response.json() as PurchaseConfig;
+      if (active) {
+        setConfig(result);
+        setName(result.customerName);
+      }
+    }
+    void loadConfig();
+    return () => { active = false; };
+  }, [open]);
+
+  async function createInvoice() {
+    if (!supabase || !config?.available) return;
+    setBusy(true);
+    setMessage("");
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) throw new Error("Sesi login berakhir. Silakan masuk kembali.");
+      const response = await fetch("/api/coach/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+        body: JSON.stringify({ name, mobile }),
+      });
+      const result = await response.json() as { error?: string; orderId?: string; checkoutUrl?: string };
+      if (!response.ok || !result.orderId || !result.checkoutUrl) {
+        throw new Error(result.error === "invalid_customer" ? "Periksa nama dan nomor ponsel." : "Invoice belum dapat dibuat. Coba lagi.");
+      }
+      setOrderId(result.orderId);
+      setCheckoutUrl(result.checkoutUrl);
+      setOrderStatus("pending");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Invoice belum dapat dibuat. Coba lagi.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function checkPaymentStatus() {
+    if (!supabase || !orderId) return;
+    setBusy(true);
+    setMessage("");
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) throw new Error("Sesi login berakhir. Silakan masuk kembali.");
+      const response = await fetch(`/api/coach/checkout?orderId=${encodeURIComponent(orderId)}`, {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+        cache: "no-store",
+      });
+      const result = await response.json() as { order?: PurchaseOrder };
+      if (!response.ok || !result.order) throw new Error("Status pembayaran belum dapat diperiksa.");
+      setOrderStatus(result.order.status);
+      if (result.order.status === "paid") onActivated?.();
+      if (result.order.status === "expired" || result.order.status === "failed") {
+        setMessage("Invoice tidak lagi aktif. Tutup lalu mulai transaksi baru.");
+      }
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Status pembayaran belum dapat diperiksa.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-end justify-center bg-gray-950/80 p-0 backdrop-blur-sm sm:items-center sm:p-4" role="dialog" aria-modal="true" aria-labelledby="coach-purchase-title">
+      <button type="button" className="absolute inset-0" onClick={onClose} aria-label="Tutup" />
+      <section className="relative max-h-[92svh] w-full max-w-lg overflow-y-auto rounded-t-3xl border border-gray-800 bg-gray-950 shadow-2xl shadow-black/40 sm:rounded-3xl">
+        <div className="flex items-center justify-between border-b border-gray-800 px-5 py-4 sm:px-6">
+          <div className="flex items-center gap-2.5">
+            <span className="grid h-9 w-9 place-items-center rounded-xl border border-lime-300/20 bg-lime-300/10 text-lime-300"><CoachIcon id="coach" className="h-5 w-5" /></span>
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-lime-300">Abadikan Coach</p>
+              <p className="text-xs text-gray-500">Akses Coach Personal</p>
+            </div>
+          </div>
+          <button type="button" onClick={onClose} className="grid h-9 w-9 place-items-center rounded-full text-gray-400 transition hover:bg-gray-800 hover:text-white" aria-label="Tutup dialog">
+            <svg aria-hidden="true" viewBox="0 0 20 20" fill="none" className="h-5 w-5"><path d="m5 5 10 10M15 5 5 15" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" /></svg>
+          </button>
+        </div>
+
+        {step === "offer" ? (
+          <div className="p-5 sm:p-6">
+            <p className="text-xs font-medium text-lime-300">PROGRAM LATIHAN UNTUK PEMULA</p>
+            <h2 id="coach-purchase-title" className="mt-2 max-w-sm text-2xl font-bold leading-tight text-white sm:text-[28px]">Mulai latihan dengan program yang terarah.</h2>
+            <div className="mt-6 rounded-2xl border border-lime-300/20 bg-gradient-to-br from-lime-300/10 to-gray-900 p-4 sm:p-5">
+              <div className="flex items-start justify-between gap-4">
+                <div><p className="text-sm font-semibold text-white">Coach Personal</p><p className="mt-1 text-sm text-gray-400">Akses selamanya</p></div>
+                <span className="rounded-full border border-lime-300/20 bg-lime-300/10 px-2.5 py-1 text-[11px] font-semibold text-lime-200">Lifetime</span>
+              </div>
+              <p className="mt-5 text-sm font-medium text-gray-300">{config?.amount ? formatRupiah(config.amount) : "Harga belum dikonfigurasi"}</p>
+            </div>
+
+            <ul className="mt-5 space-y-3">
+              <li className="flex items-center gap-3 text-sm text-gray-200"><CheckIcon />Program berdasarkan tujuan dan pengalaman latihan</li>
+              <li className="flex items-center gap-3 text-sm text-gray-200"><CheckIcon />Pilihan gerakan menyesuaikan alat yang tersedia</li>
+              <li className="flex items-center gap-3 text-sm text-gray-200"><CheckIcon />Perbarui program sesuai kebutuhan</li>
+            </ul>
+
+            <button type="button" onClick={() => setStep("checkout")} className="mt-7 w-full rounded-xl bg-lime-300 px-4 py-3.5 text-sm font-bold text-gray-950 transition hover:bg-lime-200 focus:outline-none focus:ring-2 focus:ring-lime-200 focus:ring-offset-2 focus:ring-offset-gray-950">Lihat ringkasan pesanan</button>
+          </div>
+        ) : (
+          <div className="p-5 sm:p-6">
+            <button type="button" onClick={() => setStep("offer")} className="inline-flex items-center gap-2 text-xs font-medium text-gray-400 transition hover:text-white">
+              <svg aria-hidden="true" viewBox="0 0 20 20" fill="none" className="h-4 w-4"><path d="M12.5 4.5 7 10l5.5 5.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" /></svg>
+              Kembali
+            </button>
+            <h2 id="coach-purchase-title" className="mt-4 text-2xl font-bold text-white">Ringkasan pesanan</h2>
+
+            <div className="mt-6 divide-y divide-gray-800 rounded-2xl border border-gray-800 bg-gray-900/70 px-4">
+              <div className="flex items-center justify-between gap-4 py-4">
+                <div><p className="text-sm font-semibold text-white">Coach Personal</p><p className="mt-1 text-xs text-gray-500">Akses selamanya</p></div>
+                <span className="text-xs font-semibold text-lime-300">Digital</span>
+              </div>
+              <div className="flex items-center justify-between py-4 text-sm"><span className="text-gray-400">Total pembayaran</span><span className="font-semibold text-white">{config?.amount ? formatRupiah(config.amount) : "Belum tersedia"}</span></div>
+            </div>
+
+            {!orderId ? (
+              <div className="mt-5 space-y-4">
+                <label className="block text-sm text-gray-300">Nama lengkap
+                  <input value={name} onChange={(event) => setName(event.target.value)} autoComplete="name" maxLength={120} className="mt-1.5 w-full rounded-xl border border-gray-700 bg-gray-900 px-3.5 py-3 text-white outline-none focus:border-lime-300" />
+                </label>
+                <label className="block text-sm text-gray-300">Nomor ponsel
+                  <input value={mobile} onChange={(event) => setMobile(event.target.value)} type="tel" autoComplete="tel" inputMode="tel" placeholder="08xxxxxxxxxx" maxLength={24} className="mt-1.5 w-full rounded-xl border border-gray-700 bg-gray-900 px-3.5 py-3 text-white outline-none focus:border-lime-300" />
+                </label>
+              </div>
+            ) : (
+              <div className="mt-5 space-y-3 rounded-xl border border-gray-800 bg-gray-900/60 p-4">
+                {orderStatus === "paid" ? <p className="text-sm font-semibold text-emerald-300">Pembayaran terverifikasi. Coach aktif selamanya.</p> : <p className="text-sm text-gray-300">Status: {orderStatus === "pending" ? "Menunggu pembayaran" : orderStatus}</p>}
+                {checkoutUrl && orderStatus === "pending" && <a href={checkoutUrl} target="_blank" rel="noreferrer" className="block rounded-lg bg-lime-300 px-4 py-3 text-center text-sm font-bold text-gray-950">Buka checkout Mayar</a>}
+                {orderStatus !== "paid" && <button type="button" onClick={() => void checkPaymentStatus()} disabled={busy} className="w-full rounded-lg border border-gray-700 px-4 py-3 text-sm font-semibold text-white disabled:opacity-50">{busy ? "Memeriksa…" : "Periksa status pembayaran"}</button>}
+              </div>
+            )}
+
+            <div className="mt-4 flex gap-3 rounded-xl border border-gray-800 bg-gray-900/50 p-3.5">
+              <svg aria-hidden="true" viewBox="0 0 20 20" fill="none" className="mt-0.5 h-4 w-4 shrink-0 text-gray-400"><path d="M10 2.5 3.5 5v4.7c0 3.7 2.6 6.2 6.5 7.8 3.9-1.6 6.5-4.1 6.5-7.8V5L10 2.5Z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" /><path d="m7.3 9.8 1.8 1.8 3.7-3.8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" /></svg>
+              <p className="text-xs leading-5 text-gray-400">Akses aktif setelah pembayaran terverifikasi.</p>
+            </div>
+
+            {!orderId && <button type="button" onClick={() => void createInvoice()} disabled={busy || !config?.available || name.trim().length < 2 || mobile.trim().length < 8} className="mt-6 w-full rounded-xl bg-lime-300 px-4 py-3.5 text-sm font-bold text-gray-950 disabled:cursor-not-allowed disabled:bg-gray-800 disabled:text-gray-500">{busy ? "Menyiapkan invoice…" : "Buat invoice pembayaran"}</button>}
+            {message && <p role="alert" className="mt-3 text-center text-sm text-rose-300">{message}</p>}
+            {!config?.available && !orderId && <p className="mt-3 text-center text-xs text-gray-500">Checkout belum dikonfigurasi.</p>}
+            {orderStatus === "paid" && <button type="button" onClick={onClose} className="mt-4 w-full rounded-xl bg-lime-300 px-4 py-3.5 text-sm font-bold text-gray-950">Mulai gunakan Coach</button>}
+          </div>
+        )}
+      </section>
+    </div>
+  );
+}

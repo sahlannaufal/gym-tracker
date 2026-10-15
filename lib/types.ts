@@ -58,6 +58,10 @@ export interface TrainingProgram {
   id: string;
   name: string;
   exercises: string[];
+  /** Catalog IDs parallel to exercises for Coach generated programs. */
+  exerciseIds?: Array<string | null>;
+  /** Status versi program Coach; program manual tidak memiliki status ini. */
+  coachStatus?: "active" | "inactive";
   createdAt: string;
   updatedAt: string;
 }
@@ -85,7 +89,10 @@ export interface BodyMeasurement {
   updatedAt: string;
 }
 
-export type CoachGoalType = "build_muscle";
+export type CoachGoalType = "build_muscle" | "lose_fat" | "build_strength" | "general_fitness";
+export type CoachTrainingExperience = "beginner" | "intermediate" | "advanced";
+export type CoachEquipmentAccess = "full_gym" | "limited_gym" | "home_gym" | "bodyweight";
+export type CoachMuscleFocus = "full_body" | "chest" | "back" | "shoulders" | "arms" | "core" | "legs";
 
 // Iterasi pertama hanya mendukung satu goal aktif agar arahan Coach tetap
 // sederhana untuk pemula. Target/program dapat diperbarui tanpa membuat goal
@@ -93,11 +100,37 @@ export type CoachGoalType = "build_muscle";
 export interface CoachGoal {
   version: 1;
   type: CoachGoalType;
+  focus: CoachMuscleFocus;
+  /** Nol priority berarti program seimbang/full body; dipertahankan terpisah dari legacy focus. */
+  focuses?: CoachMuscleFocus[];
   weeklySessionTarget: number;
+  sessionDurationMinutes: 30 | 45 | 60;
+  // programId dipertahankan untuk migrasi goal Coach versi awal.
   programId: string | null;
+  programIds: string[];
+  trainingExperience: CoachTrainingExperience;
+  equipmentAccess: CoachEquipmentAccess;
+  /** Peralatan spesifik yang tersedia; opsional untuk data Coach lama. */
+  equipmentIds?: CoachEquipmentId[];
   startedAt: string;
   updatedAt: string;
 }
+
+export type CoachEquipmentId =
+  | "dumbbells" | "barbell" | "bench" | "bands" | "pullup_bar"
+  | "cable_machine" | "machines" | "kettlebell" | "bodyweight";
+
+export type CoachCheckIn = {
+  id: string;
+  weekStart: string;
+  completedSessions: number;
+  difficulty: "easy" | "right" | "hard";
+  recovery: "low" | "okay" | "good";
+  scheduleFit: "no" | "partly" | "yes";
+  equipmentIssues: boolean;
+  note?: string;
+  createdAt: string;
+};
 
 export interface CustomExercise {
   id: string;
