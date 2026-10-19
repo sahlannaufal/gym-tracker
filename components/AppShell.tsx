@@ -3,7 +3,7 @@
 import { usePathname } from "next/navigation";
 import BottomNav from "./BottomNav";
 import InstallPrompt from "./InstallPrompt";
-import ShopeeRedirect from "./ShopeeRedirect";
+import AppAdRedirect from "./AppAdRedirect";
 import CoachSessionOffer from "./CoachSessionOffer";
 import { isMarketingHostname } from "@/lib/site";
 import { useIsMarketingHost } from "@/lib/useMarketingHost";
@@ -37,12 +37,12 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     return <div className="min-h-screen">{children}</div>;
   }
 
-  const shopeeRedirect = !isPublicUtilityPath(pathname) && <ShopeeRedirect />;
+  const adRedirect = !isPublicUtilityPath(pathname) && <AppAdRedirect />;
 
   if (isDashboardPath(pathname)) {
     return (
       <>
-        {shopeeRedirect}
+        {adRedirect}
         <main className="mx-auto w-full max-w-3xl px-4 pt-6 pb-16">{children}</main>
       </>
     );
@@ -50,7 +50,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <>
-      {shopeeRedirect}
+      {adRedirect}
       {!isPublicUtilityPath(pathname) && <CoachSessionOffer />}
       <main className="mx-auto w-full max-w-2xl px-4 pt-6 pb-28">{children}</main>
       <InstallPrompt />

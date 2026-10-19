@@ -106,12 +106,20 @@ export default function DashboardPage() {
           <h1 className="mt-2 text-2xl font-black tracking-tight">Kelola Blog</h1>
           <p className="mt-1 text-sm text-gray-400">{user.email}</p>
         </div>
-        <Link
-          href="/dashboard/post/new"
-          className="rounded-xl bg-lime-400 px-5 py-2.5 text-sm font-bold text-gray-950 transition-colors hover:bg-lime-300"
-        >
-          + Tulis Postingan
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <Link
+            href="/dashboard/ads"
+            className="rounded-xl border border-gray-700 px-5 py-2.5 text-sm font-bold text-gray-200 transition-colors hover:border-lime-400/50 hover:bg-gray-800"
+          >
+            Tautan Iklan
+          </Link>
+          <Link
+            href="/dashboard/post/new"
+            className="rounded-xl bg-lime-400 px-5 py-2.5 text-sm font-bold text-gray-950 transition-colors hover:bg-lime-300"
+          >
+            + Tulis Postingan
+          </Link>
+        </div>
       </header>
 
       {loadError && (

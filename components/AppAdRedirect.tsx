@@ -3,12 +3,21 @@
 import { useEffect } from "react";
 import { supabase } from "@/lib/supabase/client";
 
-const SHOPEE_URL = "https://s.shopee.co.id/7AeJwNLgIX";
 const REDIRECT_INTERVAL_MS = 5 * 60 * 1000;
 const ENTITLEMENT_UPDATED_EVENT = "coach-entitlement-updated";
 const ENTITLEMENT_UPDATED_STORAGE_KEY = "coach-entitlement-updated";
 
-export default function ShopeeRedirect() {
+function getSafeAdUrl(value: string | null | undefined): string | null {
+  if (!value) return null;
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" || url.protocol === "http:" ? url.toString() : null;
+  } catch {
+    return null;
+  }
+}
+
+export default function AppAdRedirect() {
   useEffect(() => {
     if (process.env.NODE_ENV !== "production" || !supabase) return;
 
@@ -61,7 +70,24 @@ export default function ShopeeRedirect() {
         return;
       }
 
-      window.location.assign(SHOPEE_URL);
+      const { data: adSettings, error: adSettingsError } = await supabase!
+        .from("app_ad_settings")
+        .select("enabled,target_url")
+        .eq("id", 1)
+        .maybeSingle();
+      if (!active || sequence !== checkSequence || !canRedirect || currentUserId !== userId || adSettingsError) return;
+      const latestRedirectUrl = adSettings?.enabled ? getSafeAdUrl(adSettings.target_url) : null;
+      if (!latestRedirectUrl) {
+        canRedirect = false;
+        stopTimer();
+        return;
+      }
+      if (document.visibilityState !== "visible") {
+        remainingMs = 0;
+        return;
+      }
+
+      window.location.assign(latestRedirectUrl);
     };
 
     const checkEntitlement = async (userId: string | null) => {
@@ -85,6 +111,15 @@ export default function ShopeeRedirect() {
       const isPremium = data?.status === "active" &&
         (!data.current_period_end || data.current_period_end > new Date().toISOString());
       if (isPremium) return;
+
+      const { data: adSettings, error: adSettingsError } = await supabase!
+        .from("app_ad_settings")
+        .select("enabled,target_url")
+        .eq("id", 1)
+        .maybeSingle();
+      if (!active || sequence !== checkSequence || adSettingsError) return;
+
+      if (!adSettings?.enabled || !getSafeAdUrl(adSettings.target_url)) return;
 
       canRedirect = true;
       startTimer();

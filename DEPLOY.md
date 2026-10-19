@@ -10,9 +10,10 @@ App PWA (Next.js). Data utama di **LocalStorage browser (offline-first)** dengan
 
 ## 0. (Opsional) Siapkan Supabase
 1. Buat project di https://supabase.com → **Project Settings → API**: catat **Project URL** & **anon key** (bukan `service_role`).
-2. Buka **SQL Editor** → jalankan isi `supabase/migrations/*.sql` satu per satu sesuai urutan nomor yang tersedia (saat ini 0001 → 0012). `0006` membuat tabel `blog_posts` + bucket Storage `blog-images`, `0007` men-seed artikel blog, `0008` membuat fondasi Coach, `0009` membatasi penulisan versi program Coach, `0010` menambah ledger pembayaran, `0011` menyelaraskan validasi program, dan `0012` mengubah entitlement Coach menjadi akses permanen.
-3. **Authentication → Providers → Email**: untuk MVP boleh matikan "Confirm email".
-4. Di VPS, buat file `.env` di folder project:
+2. Buka **SQL Editor** → jalankan isi `supabase/migrations/*.sql` satu per satu sesuai urutan nomor yang tersedia (saat ini 0001 → 0013). `0006` membuat tabel `blog_posts` + bucket Storage `blog-images`, `0007` men-seed artikel blog, `0008` membuat fondasi Coach, `0009` membatasi penulisan versi program Coach, `0010` menambah ledger pembayaran, `0011` menyelaraskan validasi program, `0012` mengubah entitlement Coach menjadi akses permanen, dan `0013` menyiapkan pengaturan tautan iklan aplikasi.
+3. Setelah `0013_app_ad_settings.sql` dijalankan, admin dapat membuka `/dashboard` → **Tautan Iklan** untuk mengganti URL tujuan atau mematikan pengalihan tanpa rebuild/redeploy aplikasi.
+4. **Authentication → Providers → Email**: untuk MVP boleh matikan "Confirm email".
+5. Di VPS, buat file `.env` di folder project:
    ```bash
    SUPABASE_URL=<Project_URL>
    SUPABASE_ANON_KEY=<anon_key>

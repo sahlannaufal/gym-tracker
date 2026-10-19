@@ -266,13 +266,14 @@ Aplikasi web sederhana (MVP) untuk mencatat dan memantau progres latihan beban (
 - Editor konten memakai **TipTap** (`components/BlogEditor.tsx`): heading H2/H3, bold/italic/underline/strike, daftar, kutipan, tautan, undo/redo, dan penyisipan gambar. Body disimpan sebagai HTML di kolom `content_html`.
 - Gambar (inline maupun cover) di-upload ke bucket publik `blog-images` (`lib/blogImages.ts`, maksimal 5 MB, hanya `image/*`); gambar yang di-drop/di-paste ke editor di-upload lebih dulu lalu disisipkan sebagai URL sehingga tidak ada konten base64 di database. RLS storage hanya menerima tulis dari email admin.
 - Simpan draft maupun publish dari halaman editor; publish tanpa tanggal terbit otomatis memakai hari ini. Baris baru dibuat dengan `created_at`/`updated_at` yang diperbarui pada tiap simpan.
+- Dashboard admin menyediakan halaman **Tautan Iklan** di `/dashboard/ads` untuk mengubah URL tujuan dan mengaktifkan/menonaktifkan pengalihan iklan aplikasi tanpa deploy ulang. Pengaturan disimpan di `app_ad_settings` (`0013_app_ad_settings.sql`); seluruh akun terautentikasi dapat membaca setting yang diperlukan aplikasi, sedangkan RLS hanya mengizinkan admin memperbaruinya.
 
-### F21. Monetisasi Shopee
+### F21. Monetisasi Tautan Iklan
 
 - Skrip, pemicu, dan metadata verifikasi Monetag dinonaktifkan; domain Monetag dihapus dari Content Security Policy. Google AdSense tetap hanya digunakan pada artikel blog publik.
-- Setelah pengguna login tanpa entitlement Coach aktif yang belum kedaluwarsa, browser pada seluruh route non-marketing dialihkan ke `https://s.shopee.co.id/7AeJwNLgIX` setiap lima menit saat tab terlihat, termasuk dashboard admin. Akun Coach Premium dikecualikan. Entitlement dicek lewat tabel `coach_entitlements`; jika Supabase atau pengecekan gagal, pengalihan tidak dijalankan. Status dicek ulang saat tab kembali terlihat dan tepat sebelum pengalihan. Timer tidak berjalan pada landing page, blog publik, terms/privacy, login, pemulihan akun, callback autentikasi, atau halaman offline; fitur hanya aktif pada production.
+- Setelah pengguna login tanpa entitlement Coach aktif yang belum kedaluwarsa, browser pada seluruh route non-marketing dapat dialihkan ke URL aktif di `app_ad_settings` setiap lima menit saat tab terlihat, termasuk dashboard admin. URL default adalah tautan Shopee yang sudah dipakai sebelumnya; admin dapat mengubah atau menonaktifkan pengalihan dari `/dashboard/ads` tanpa deploy. Akun Coach Premium dikecualikan. Entitlement dan pengaturan tautan dibaca dari Supabase; jika pengecekan gagal, pengalihan tidak dijalankan. URL dibaca ulang sebelum pengalihan dan diperiksa agar hanya memakai protokol HTTP/HTTPS. Timer tidak berjalan pada landing page, blog publik, terms/privacy, login, pemulihan akun, callback autentikasi, atau halaman offline; fitur hanya aktif pada production.
 - Jika tab disembunyikan, hitung mundur berhenti dan dilanjutkan saat tab terlihat kembali. Saat pembayaran Coach terverifikasi, timer dihentikan langsung pada tab aktif dan sinyal storage memperbarui tab lain. Pengalihan memakai navigasi biasa sehingga pengguna dapat kembali ke aplikasi lewat tombol Back.
-- Tautan dapat membawa atribusi referral/afiliasi sesuai konfigurasi Shopee; kebijakan privasi dan syarat layanan menjelaskan pengalihan dan kemungkinan komisi.
+- Tautan promosi dapat membawa atribusi referral/afiliasi sesuai program penyedia tautan; kebijakan privasi dan syarat layanan menjelaskan pengalihan serta kemungkinan komisi.
 
 ## 7. Data Model
 
