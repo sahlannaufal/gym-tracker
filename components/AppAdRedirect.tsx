@@ -27,7 +27,7 @@ export default function AppAdRedirect() {
     let checkSequence = 0;
     let remainingMs = REDIRECT_INTERVAL_MS;
     let timerId: number | null = null;
-    let resumedAt: number | null = null;
+    let timerStartedAt: number | null = null;
 
     const stopTimer = () => {
       if (timerId !== null) {
@@ -36,11 +36,18 @@ export default function AppAdRedirect() {
       }
     };
 
-    const startTimer = () => {
-      if (!canRedirect || document.visibilityState !== "visible" || timerId !== null) return;
+    const recordElapsedTime = () => {
+      if (timerStartedAt === null) return;
+      remainingMs = Math.max(0, remainingMs - (Date.now() - timerStartedAt));
+      timerStartedAt = null;
+    };
 
-      resumedAt = Date.now();
+    const startTimer = () => {
+      if (!canRedirect || timerId !== null) return;
+
+      timerStartedAt = Date.now();
       timerId = window.setTimeout(() => {
+        recordElapsedTime();
         timerId = null;
         void redirectIfStillEligible();
       }, remainingMs);
@@ -67,6 +74,7 @@ export default function AppAdRedirect() {
         (!data.current_period_end || data.current_period_end > new Date().toISOString());
       if (isPremium) {
         canRedirect = false;
+        remainingMs = REDIRECT_INTERVAL_MS;
         return;
       }
 
@@ -79,6 +87,7 @@ export default function AppAdRedirect() {
       const latestRedirectUrl = adSettings?.enabled ? getSafeAdUrl(adSettings.target_url) : null;
       if (!latestRedirectUrl) {
         canRedirect = false;
+        remainingMs = REDIRECT_INTERVAL_MS;
         stopTimer();
         return;
       }
@@ -92,10 +101,12 @@ export default function AppAdRedirect() {
 
     const checkEntitlement = async (userId: string | null) => {
       const sequence = ++checkSequence;
+      const userChanged = currentUserId !== userId;
+      recordElapsedTime();
       currentUserId = userId;
       canRedirect = false;
       stopTimer();
-      resumedAt = null;
+      if (userChanged) remainingMs = REDIRECT_INTERVAL_MS;
 
       if (!userId) return;
 
@@ -110,7 +121,10 @@ export default function AppAdRedirect() {
 
       const isPremium = data?.status === "active" &&
         (!data.current_period_end || data.current_period_end > new Date().toISOString());
-      if (isPremium) return;
+      if (isPremium) {
+        remainingMs = REDIRECT_INTERVAL_MS;
+        return;
+      }
 
       const { data: adSettings, error: adSettingsError } = await supabase!
         .from("app_ad_settings")
@@ -119,7 +133,10 @@ export default function AppAdRedirect() {
         .maybeSingle();
       if (!active || sequence !== checkSequence || adSettingsError) return;
 
-      if (!adSettings?.enabled || !getSafeAdUrl(adSettings.target_url)) return;
+      if (!adSettings?.enabled || !getSafeAdUrl(adSettings.target_url)) {
+        remainingMs = REDIRECT_INTERVAL_MS;
+        return;
+      }
 
       canRedirect = true;
       startTimer();
@@ -131,22 +148,14 @@ export default function AppAdRedirect() {
     };
 
     const handleVisibilityChange = () => {
-      if (document.visibilityState === "hidden") {
-        if (timerId !== null && resumedAt !== null) {
-          remainingMs = Math.max(0, remainingMs - (Date.now() - resumedAt));
-        }
-        stopTimer();
-        resumedAt = null;
-        return;
-      }
-
-      void refreshCurrentEntitlement();
+      if (document.visibilityState === "visible") void refreshCurrentEntitlement();
     };
 
     const handleCoachEntitlementUpdated = () => {
       canRedirect = false;
+      recordElapsedTime();
       stopTimer();
-      resumedAt = null;
+      remainingMs = REDIRECT_INTERVAL_MS;
     };
 
     const handleStorage = (event: StorageEvent) => {
