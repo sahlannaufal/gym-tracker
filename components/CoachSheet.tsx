@@ -387,7 +387,7 @@ export default function CoachSheet({ open, goal, onClose, onUseRecommendation, p
                               {!exerciseCatalogLoaded ? <p className="text-xs text-gray-500">Memuat pilihan gerakan...</p> : alternatives.length ? <div className="space-y-1.5">
                                 <p className="mb-2 text-xs text-gray-500">Otot utama: {exerciseCatalog.find((item) => item.id === exerciseId)?.target}</p>
                                 {alternatives.slice(0, 8).map((alternative) => <button key={alternative.id} type="button" onClick={() => {
-                                  trackEvent("Coach Exercise Substituted");
+                                  trackEvent("Coach Exercise Substituted", { replacement_context: "preview" });
                                   setRecommendation((current) => current ? {
                                     ...current,
                                     programs: current.programs.map((item, itemIndex) => itemIndex !== programIndex ? item : {

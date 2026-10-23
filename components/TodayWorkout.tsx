@@ -9,6 +9,8 @@ import { formatDate, todayLocalISO, weekdayFromISO } from "@/lib/format";
 import type { Workout, WorkoutInput } from "@/lib/types";
 import FloatingRestTimer from "./FloatingRestTimer";
 import ExerciseTutorialModal from "./ExerciseTutorialModal";
+import TemporaryExerciseSwapSheet from "./TemporaryExerciseSwapSheet";
+import type { ExerciseCatalogItem } from "@/lib/exerciseCatalog";
 import type { WorkoutTrackingContext } from "@/lib/useWorkouts";
 import { trackEvent } from "@/lib/analytics";
 
@@ -23,6 +25,15 @@ type SetRow = {
   reps: string;
 };
 
+type TemporaryExerciseSwap = {
+  originalName: string;
+  originalId: string | null;
+  replacementName: string;
+  replacementId: string;
+};
+
+const TEMPORARY_SWAP_STORAGE_KEY = "gym_tracker_coach_temporary_swaps_v1";
+
 function ExerciseCard({
   name,
   entries,
@@ -33,6 +44,11 @@ function ExerciseCard({
   onDelete,
   onStartRest,
   onOpenTutorial,
+  exerciseId,
+  showTemporarySwap,
+  isTemporarySwap,
+  canTemporarySwap,
+  onTemporarySwap,
 }: {
   name: string;
   entries: Workout[];
@@ -45,7 +61,12 @@ function ExerciseCard({
   ) => Workout | null;
   onDelete: (id: string) => void;
   onStartRest: (exercise: string) => void;
-  onOpenTutorial: (exercise: string) => void;
+  onOpenTutorial: (exercise: string, exerciseId?: string | null) => void;
+  exerciseId?: string | null;
+  showTemporarySwap: boolean;
+  isTemporarySwap: boolean;
+  canTemporarySwap: boolean;
+  onTemporarySwap: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const [rows, setRows] = useState<SetRow[]>([]);
@@ -198,6 +219,7 @@ function ExerciseCard({
           className="flex min-w-0 flex-1 items-center gap-2 text-left"
         >
           <p className="truncate font-semibold text-gray-100">{name}</p>
+          {isTemporarySwap && <span className="shrink-0 rounded-full bg-lime-400/10 px-2 py-0.5 text-[10px] font-semibold text-lime-200">Sementara</span>}
           {totalSets > 0 && (
             <span className="rounded-full bg-lime-400/15 px-2 py-0.5 text-xs font-medium text-lime-400">
               {totalSets}
@@ -206,9 +228,10 @@ function ExerciseCard({
         </button>
         <button
           type="button"
-          onClick={() => onOpenTutorial(name)}
+          onClick={() => onOpenTutorial(name, exerciseId)}
           aria-label={`Buka tutorial ${name}`}
-          className="flex h-9 shrink-0 items-center gap-1.5 rounded-xl border border-lime-400/30 bg-lime-400/10 px-2.5 text-xs font-semibold text-lime-400 hover:bg-lime-400/20"
+          title={`Tutorial ${name}`}
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-lime-400/30 bg-lime-400/10 text-lime-400 hover:bg-lime-400/20"
         >
           <svg
             className="h-4 w-4"
@@ -221,8 +244,24 @@ function ExerciseCard({
           >
             <path d="M8 5v14l11-7z" />
           </svg>
-          Tutorial
         </button>
+        {showTemporarySwap && (
+          <button
+            type="button"
+            onClick={onTemporarySwap}
+            disabled={!canTemporarySwap}
+            aria-label={`Ganti ${name} sementara untuk hari ini`}
+            title={canTemporarySwap ? "Ganti sementara hari ini" : "Gerakan sudah dicatat hari ini"}
+            className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border disabled:cursor-not-allowed disabled:opacity-40 ${isTemporarySwap ? "border-lime-400/50 bg-lime-400/10 text-lime-300" : "border-gray-700 text-gray-400 hover:border-lime-400/50 hover:text-lime-300"}`}
+          >
+            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="m16 3 4 4-4 4" />
+              <path d="M20 7H4" />
+              <path d="m8 21-4-4 4-4" />
+              <path d="M4 17h16" />
+            </svg>
+          </button>
+        )}
         <button
           type="button"
           onClick={() => setOpen((current) => !current)}
@@ -333,12 +372,63 @@ export default function TodayWorkout({
   const { store, setAssignment, clearAssignment } = useTrainingPrograms();
   const { goal } = useCoachGoal();
   const { workouts, addWorkout, updateWorkout, removeWorkout } = useWorkouts();
-  const date = todayLocalISO();
+  const [date, setDate] = useState(() => todayLocalISO());
   const [timerOpen, setTimerOpen] = useState(false);
   const [timerExercise, setTimerExercise] = useState<string>();
   const [timerRestartKey, setTimerRestartKey] = useState(0);
-  const [tutorialExercise, setTutorialExercise] = useState<string>();
+  const [tutorialExercise, setTutorialExercise] = useState<{ name: string; id?: string } | null>(null);
+  const [temporarySwaps, setTemporarySwaps] = useState<Record<string, TemporaryExerciseSwap>>({});
+  const [temporarySwapStorageReady, setTemporarySwapStorageReady] = useState(false);
+  const [swapExerciseIndex, setSwapExerciseIndex] = useState<number | null>(null);
   const coachWorkoutEvents = useRef(new Set<string>());
+
+  useEffect(() => {
+    const refreshDate = () => {
+      const currentDate = todayLocalISO();
+      setDate((previousDate) => previousDate === currentDate ? previousDate : currentDate);
+    };
+    window.addEventListener("focus", refreshDate);
+    const interval = window.setInterval(refreshDate, 60_000);
+    return () => {
+      window.removeEventListener("focus", refreshDate);
+      window.clearInterval(interval);
+    };
+  }, []);
+
+  useEffect(() => {
+    try {
+      const stored = window.sessionStorage.getItem(TEMPORARY_SWAP_STORAGE_KEY);
+      const parsed = stored ? JSON.parse(stored) as Record<string, TemporaryExerciseSwap> : {};
+      const todayPrefix = `${todayLocalISO()}::`;
+      const todaysSwaps = Object.fromEntries(
+        Object.entries(parsed).filter(([key, value]) =>
+          key.startsWith(todayPrefix) &&
+          typeof value?.originalName === "string" &&
+          (typeof value?.originalId === "string" || value?.originalId === null) &&
+          typeof value?.replacementName === "string" &&
+          typeof value?.replacementId === "string",
+        ),
+      );
+      setTemporarySwaps(todaysSwaps);
+    } catch {
+      setTemporarySwaps({});
+    } finally {
+      setTemporarySwapStorageReady(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!temporarySwapStorageReady) return;
+    const todayPrefix = `${date}::`;
+    const todaysSwaps = Object.fromEntries(
+      Object.entries(temporarySwaps).filter(([key]) => key.startsWith(todayPrefix)),
+    );
+    try {
+      window.sessionStorage.setItem(TEMPORARY_SWAP_STORAGE_KEY, JSON.stringify(todaysSwaps));
+    } catch {
+      // Temporary substitutions remain usable in memory if session storage is unavailable.
+    }
+  }, [date, temporarySwaps, temporarySwapStorageReady]);
 
   const startRestTimer = (exercise: string) => {
     setTimerExercise(exercise);
@@ -355,12 +445,23 @@ export default function TodayWorkout({
   const selectedProgram = assignment?.programId
     ? store.programs.find((program) => program.id === assignment.programId)
     : undefined;
-  const exercises = selectedProgram?.exercises ?? [];
+  const programExercises = selectedProgram?.exercises ?? [];
+  const exercises = programExercises.map((name, index) => {
+    const programId = selectedProgram?.id;
+    if (!programId) return name;
+    const swap = temporarySwaps[`${date}::${programId}::${index}`];
+    const originalId = selectedProgram?.exerciseIds?.[index] ?? null;
+    return swap && swap.originalName === name && swap.originalId === originalId
+      ? swap.replacementName
+      : name;
+  });
   const coachProgramIds = new Set(goal?.programIds ?? []);
+  const selectedIsCoachProgram = Boolean(selectedProgram && coachProgramIds.has(selectedProgram.id));
   const coachPrograms = store.programs.filter((program) => coachProgramIds.has(program.id));
   const coachProgramWasUsed = (programId: string, usedDate: string) => {
     const program = coachPrograms.find((item) => item.id === programId);
-    return Boolean(program && workouts.some((workout) => workout.date === usedDate && program.exercises.includes(workout.exercise)));
+    const wasScheduled = store.schedule[usedDate]?.programId === programId;
+    return Boolean(program && wasScheduled && workouts.some((workout) => workout.date === usedDate));
   };
   const previousCoachUses = Object.entries(store.schedule)
     .filter(([scheduledDate, scheduled]) => scheduledDate < date && !!scheduled.programId && coachProgramIds.has(scheduled.programId) && coachProgramWasUsed(scheduled.programId, scheduledDate))
@@ -377,6 +478,43 @@ export default function TodayWorkout({
     .sort((a, b) => b.localeCompare(a))[0];
   const entriesFor = (name: string) =>
     workouts.filter((workout) => workout.exercise === name && workout.date === date);
+
+  const currentSwapIndex = swapExerciseIndex;
+  const swapOriginalName = currentSwapIndex === null ? "" : programExercises[currentSwapIndex] ?? "";
+  const swapOriginalId = currentSwapIndex === null ? null : selectedProgram?.exerciseIds?.[currentSwapIndex] ?? null;
+  const activeSwapKey = currentSwapIndex === null || !selectedProgram
+    ? ""
+    : `${date}::${selectedProgram.id}::${currentSwapIndex}`;
+  const activeSwap = activeSwapKey ? temporarySwaps[activeSwapKey] : undefined;
+  const hasActiveSwap = Boolean(
+    activeSwap &&
+    activeSwap.originalName === swapOriginalName &&
+    activeSwap.originalId === swapOriginalId,
+  );
+  const handleTemporarySwap = (exercise: ExerciseCatalogItem) => {
+    if (currentSwapIndex === null || !selectedProgram) return;
+    const key = `${date}::${selectedProgram.id}::${currentSwapIndex}`;
+    setTemporarySwaps((current) => ({
+      ...current,
+      [key]: {
+        originalName: swapOriginalName,
+        originalId: swapOriginalId,
+        replacementName: exercise.name,
+        replacementId: exercise.id,
+      },
+    }));
+    trackEvent("Coach Exercise Substituted", { replacement_context: "today_workout" });
+    setSwapExerciseIndex(null);
+  };
+  const restoreProgramExercise = () => {
+    if (!activeSwapKey) return;
+    setTemporarySwaps((current) => {
+      const next = { ...current };
+      delete next[activeSwapKey];
+      return next;
+    });
+    setSwapExerciseIndex(null);
+  };
 
   const selectCoachProgram = (programId: string, selectionMethod: "rotation_button" | "program_picker") => {
     setAssignment(date, programId);
@@ -413,7 +551,7 @@ export default function TodayWorkout({
 
       {coachPrograms.length > 0 && <section className="rounded-2xl border border-lime-400/20 bg-lime-400/5 p-4">
         <div className="flex items-center justify-between gap-3">
-          <div><p className="text-sm font-semibold text-lime-200">Rotasi Coach</p><p className="mt-1 text-xs text-gray-500">Pilih sesi berikutnya; program lain tetap tersedia untuk hari lain.</p></div>
+          <div><p className="text-sm font-semibold text-lime-200">Rotasi Program</p></div>
           <span className="shrink-0 rounded-full bg-gray-900 px-2.5 py-1 text-xs text-gray-400">{coachPrograms.length} sesi</span>
         </div>
         {nextCoachProgram && !assignment && <button type="button" onClick={() => selectCoachProgram(nextCoachProgram.id, "rotation_button")} className="mt-3 w-full rounded-xl bg-lime-400 px-4 py-2.5 text-left text-sm font-bold text-gray-950 hover:bg-lime-300">Pilih sesi berikutnya · {nextCoachProgram.name.replace("Coach · ", "")}</button>}
@@ -486,10 +624,43 @@ export default function TodayWorkout({
               onUpdate={updateWorkout}
               onDelete={removeWorkout}
               onStartRest={startRestTimer}
-              onOpenTutorial={setTutorialExercise}
+              onOpenTutorial={(exerciseName, exerciseId) => setTutorialExercise({ name: exerciseName, id: exerciseId ?? undefined })}
+              exerciseId={
+                temporarySwaps[`${date}::${selectedProgram.id}::${index}`]?.replacementId &&
+                temporarySwaps[`${date}::${selectedProgram.id}::${index}`]?.originalName === programExercises[index] &&
+                temporarySwaps[`${date}::${selectedProgram.id}::${index}`]?.originalId === (selectedProgram.exerciseIds?.[index] ?? null)
+                  ? temporarySwaps[`${date}::${selectedProgram.id}::${index}`].replacementId
+                  : selectedProgram.exerciseIds?.[index]
+              }
+              showTemporarySwap={selectedIsCoachProgram}
+              isTemporarySwap={Boolean(
+                temporarySwaps[`${date}::${selectedProgram.id}::${index}`] &&
+                temporarySwaps[`${date}::${selectedProgram.id}::${index}`].originalName === programExercises[index] &&
+                temporarySwaps[`${date}::${selectedProgram.id}::${index}`].originalId === (selectedProgram.exerciseIds?.[index] ?? null)
+              )}
+              canTemporarySwap={!workouts.some((workout) =>
+                workout.date === date &&
+                (workout.exercise === programExercises[index] || workout.exercise === name),
+              )}
+              onTemporarySwap={() => setSwapExerciseIndex(index)}
             />
           ))}
         </ul>
+      )}
+
+      {swapExerciseIndex !== null && selectedProgram && selectedIsCoachProgram && (
+        <TemporaryExerciseSwapSheet
+          exerciseName={swapOriginalName}
+          exerciseId={swapOriginalId}
+          equipmentIds={goal?.equipmentIds}
+          equipmentAccess={goal?.equipmentAccess ?? "full_gym"}
+          hasTemporarySwap={hasActiveSwap}
+          onSelect={handleTemporarySwap}
+          onViewTutorial={(exercise) => setTutorialExercise({ name: exercise.name, id: exercise.id })}
+          tutorialOpen={Boolean(tutorialExercise)}
+          onRestore={restoreProgramExercise}
+          onClose={() => setSwapExerciseIndex(null)}
+        />
       )}
 
       <FloatingRestTimer
@@ -499,8 +670,9 @@ export default function TodayWorkout({
         onClose={() => setTimerOpen(false)}
       />
       <ExerciseTutorialModal
-        exercise={tutorialExercise}
-        onClose={() => setTutorialExercise(undefined)}
+        exercise={tutorialExercise?.name}
+        exerciseId={tutorialExercise?.id}
+        onClose={() => setTutorialExercise(null)}
       />
     </section>
   );

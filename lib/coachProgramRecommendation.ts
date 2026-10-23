@@ -125,9 +125,10 @@ export function isCoachExerciseEquipmentAllowed(
   }
   if (/bench/i.test(item.name) && !selected.includes("bench")) return false;
   const equipmentMap: Record<string, CoachEquipmentId[]> = {
-    dumbbell: ["dumbbells"], barbell: ["barbell"], band: ["bands"],
-    cable: ["cable_machine"], "lever machine": ["machines"], "smith machine": ["machines"],
-    "sled machine": ["machines"], kettlebell: ["kettlebell"], rope: ["cable_machine"],
+    dumbbell: ["dumbbells"], barbell: ["barbell"], "ez barbell": ["barbell"], "olympic barbell": ["barbell"], "trap bar": ["barbell"],
+    band: ["bands"], "resistance band": ["bands"], cable: ["cable_machine"],
+    "lever machine": ["machines"], "leverage machine": ["machines"], "smith machine": ["machines"],
+    "sled machine": ["machines"], assisted: ["machines"], kettlebell: ["kettlebell"], rope: ["cable_machine"],
     weighted: ["dumbbells", "barbell", "kettlebell"],
   };
   const requirements = equipmentMap[equipment];
