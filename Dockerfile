@@ -1,5 +1,5 @@
 # ---- deps: install all dependencies ----
-FROM node:22-alpine AS deps
+FROM node:22.23.4-alpine AS deps
 WORKDIR /app
 # Pin npm ke versi yang sama dengan pembuat package-lock.json (npm 11).
 # npm 10 bawaan image menolak lock ini (peer @swc/helpers), sedangkan npm 11 menerimanya.
@@ -8,7 +8,7 @@ COPY package.json package-lock.json ./
 RUN npm ci --no-audit --no-fund
 
 # ---- build: compile the Next.js app ----
-FROM node:22-alpine AS build
+FROM node:22.23.4-alpine AS build
 WORKDIR /app
 # NEXT_PUBLIC_* di-inline saat build; isi lewat docker-compose build args (lihat docker-compose.yml)
 ARG NEXT_PUBLIC_SUPABASE_URL
@@ -24,7 +24,7 @@ COPY . .
 RUN npm run build
 
 # ---- runner: minimal production image ----
-FROM node:22-alpine AS runner
+FROM node:22.23.4-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=3000
