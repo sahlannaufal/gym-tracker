@@ -20,3 +20,9 @@ ayuadina.abadikan.com {
 n8n.abadikan.com {
     reverse_proxy n8n:5678
 }
+
+gitar.abadikan.com {
+    encode zstd gzip
+    root * /gitar
+    file_server
+}
