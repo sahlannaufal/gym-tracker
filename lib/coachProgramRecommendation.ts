@@ -180,15 +180,6 @@ function exerciseLimit(duration: 30 | 45 | 60, experience: CoachTrainingExperien
   return experience === "beginner" ? Math.min(base, 5) : base;
 }
 
-function stableHash(value: string): number {
-  let hash = 2166136261;
-  for (let index = 0; index < value.length; index += 1) {
-    hash ^= value.charCodeAt(index);
-    hash = Math.imul(hash, 16777619);
-  }
-  return hash >>> 0;
-}
-
 export function getCoachProgramRecommendation(input: CoachProgramRecommendationInput): CoachProgramRecommendation {
   const variation = Number.isInteger(input.variation) && (input.variation ?? 0) >= 0
     ? input.variation as number
@@ -200,6 +191,7 @@ export function getCoachProgramRecommendation(input: CoachProgramRecommendationI
   const available = input.catalog.filter((item) =>
     isCoachExerciseEquipmentAllowed(item, input.equipmentIds, input.equipmentAccess) && isCoachExerciseEligible(item),
   );
+  const selectedAcrossWeek = new Set<string>();
   const programs = split.keys.map((key) => {
     const slots = categoriesForSession(key);
     const selectedInSession = new Set<string>();
@@ -214,22 +206,28 @@ export function getCoachProgramRecommendation(input: CoachProgramRecommendationI
         slots.splice(targetIndex, 0, focusCategory);
       }
     });
-    const selected = slots.slice(0, limit).map((category, slotIndex) => {
+    const selected = slots.slice(0, limit).map((category) => {
       const matches = available
         .filter((item) => (categoryLabels[category] ?? [category]).includes(item.category))
         .sort((a, b) => {
-          const scoreA = (a.popular ? 5 : 0) + preferredNameScore(a.name, category, input.goalType);
-          const scoreB = (b.popular ? 5 : 0) + preferredNameScore(b.name, category, input.goalType);
-          return scoreB - scoreA || a.id.localeCompare(b.id);
+          const popularFirst = Number(b.popular) - Number(a.popular);
+          const goalFit = preferredNameScore(b.name, category, input.goalType) - preferredNameScore(a.name, category, input.goalType);
+          return popularFirst || goalFit || a.id.localeCompare(b.id);
         });
-      const choices = matches.filter((item) => !selectedInSession.has(item.id));
-      // Keep exercise slots in place, but rotate the candidate movement for
-      // each session/slot so regeneration changes exercises instead of order.
-      const offset = choices.length
-        ? (variation + stableHash(`${key}:${slotIndex}:${category}`)) % choices.length
-        : 0;
-      const match = choices[offset];
-      if (match) selectedInSession.add(match.id);
+      // Prefer a different movement across the weekly rotation when possible.
+      // Catalog-popular exercises rank first; regeneration advances through
+      // that ranked list instead of jumping to an arbitrary catalog item.
+      const weeklyChoices = matches.filter((item) =>
+        !selectedInSession.has(item.id) && !selectedAcrossWeek.has(item.id),
+      );
+      const choices = weeklyChoices.length
+        ? weeklyChoices
+        : matches.filter((item) => !selectedInSession.has(item.id));
+      const match = choices.length ? choices[variation % choices.length] : undefined;
+      if (match) {
+        selectedInSession.add(match.id);
+        selectedAcrossWeek.add(match.id);
+      }
       return match;
     }).filter((item): item is ExerciseCatalogItem => Boolean(item));
     return {

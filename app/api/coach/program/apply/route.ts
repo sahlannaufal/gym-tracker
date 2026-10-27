@@ -57,7 +57,7 @@ function parseProfile(value: unknown, recommendation: CoachProgramRecommendation
     new Set(selectedFocuses).size !== selectedFocuses.length ||
     !selectedFocuses.every((item) => typeof item === "string" && item !== "full_body" && focuses.includes(item as CoachMuscleFocus)) ||
     (selectedFocuses.length ? profile.focus !== selectedFocuses[0] : profile.focus !== "full_body") ||
-    !Number.isInteger(profile.weeklySessionTarget) || (profile.weeklySessionTarget as number) < 1 || (profile.weeklySessionTarget as number) > 7 ||
+    !Number.isInteger(profile.weeklySessionTarget) || (profile.weeklySessionTarget as number) < 1 || (profile.weeklySessionTarget as number) > 6 ||
     ![30, 45, 60].includes(profile.sessionDurationMinutes as number) ||
     typeof profile.trainingExperience !== "string" || !experiences.includes(profile.trainingExperience as CoachTrainingExperience) ||
     typeof profile.equipmentAccess !== "string" || !equipmentAccessOptions.includes(profile.equipmentAccess as CoachEquipmentAccess) ||

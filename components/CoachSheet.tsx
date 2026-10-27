@@ -89,6 +89,11 @@ export default function CoachSheet({ open, goal, onClose, onUseRecommendation, p
   const viewedSteps = useRef(new Set<number>());
   const setupStartedForOpen = useRef(false);
   const appliedForOpen = useRef(false);
+  const goalRef = useRef(goal);
+
+  useEffect(() => {
+    goalRef.current = goal;
+  }, [goal]);
 
   useEffect(() => {
     if (!open) {
@@ -100,21 +105,22 @@ export default function CoachSheet({ open, goal, onClose, onUseRecommendation, p
       setupStartedForOpen.current = true;
       appliedForOpen.current = false;
       viewedSteps.current.clear();
-      trackEvent("Coach Setup Started", { placement, has_existing_program: Boolean(goal?.programIds.length) });
+      const currentGoal = goalRef.current;
+      trackEvent("Coach Setup Started", { placement, has_existing_program: Boolean(currentGoal?.programIds.length) });
+      setStep(1);
+      setWeeklySessionTarget(Math.max(1, Math.min(6, currentGoal?.weeklySessionTarget ?? 3)));
+      setGoalType(currentGoal?.type ?? "build_muscle");
+      const savedFocuses = currentGoal?.focuses?.filter(
+        (item): item is Exclude<CoachMuscleFocus, "full_body"> => item !== "full_body",
+      );
+      setFocuses(savedFocuses ?? (currentGoal?.focus && currentGoal.focus !== "full_body" ? [currentGoal.focus] : []));
+      setSessionDurationMinutes(currentGoal?.sessionDurationMinutes ?? 45);
+      setTrainingExperience(currentGoal?.trainingExperience ?? "beginner");
+      setEquipmentIds(currentGoal?.equipmentIds ?? ["dumbbells", "barbell", "bench", "cable_machine", "machines", "bodyweight"]);
+      setTrainingLocation(currentGoal?.equipmentAccess === "home_gym" || currentGoal?.equipmentAccess === "bodyweight" ? "home" : "gym");
+      setVariation(0);
     }
-    setStep(1);
-    setWeeklySessionTarget(goal?.weeklySessionTarget ?? 3);
-    setGoalType(goal?.type ?? "build_muscle");
-    const savedFocuses = goal?.focuses?.filter(
-      (item): item is Exclude<CoachMuscleFocus, "full_body"> => item !== "full_body",
-    );
-    setFocuses(savedFocuses ?? (goal?.focus && goal.focus !== "full_body" ? [goal.focus] : []));
-    setSessionDurationMinutes(goal?.sessionDurationMinutes ?? 45);
-    setTrainingExperience(goal?.trainingExperience ?? "beginner");
-    setEquipmentIds(goal?.equipmentIds ?? ["dumbbells", "barbell", "bench", "cable_machine", "machines", "bodyweight"]);
-    setTrainingLocation(goal?.equipmentAccess === "home_gym" || goal?.equipmentAccess === "bodyweight" ? "home" : "gym");
-    setVariation(0);
-  }, [goal, open, placement]);
+  }, [open, placement]);
 
   useEffect(() => {
     if (!open || viewedSteps.current.has(step)) return;
@@ -122,7 +128,7 @@ export default function CoachSheet({ open, goal, onClose, onUseRecommendation, p
     trackEvent("Coach Setup Step Viewed", { step_number: step });
   }, [open, step]);
 
-  const setTarget = (value: number) => setWeeklySessionTarget(Math.max(1, Math.min(7, value)));
+  const setTarget = (value: number) => setWeeklySessionTarget(Math.max(1, Math.min(6, value)));
   const focus = focuses[0] ?? "full_body";
 
   const closeSetup = () => {
@@ -314,8 +320,8 @@ export default function CoachSheet({ open, goal, onClose, onUseRecommendation, p
                 <legend className="text-sm font-semibold text-gray-200">Target latihan per minggu</legend>
                 <div className="mt-2 flex w-full items-center justify-between rounded-xl border border-gray-700 bg-gray-950 p-1.5">
                   <button type="button" onClick={() => setTarget(weeklySessionTarget - 1)} disabled={weeklySessionTarget <= 1} className="grid h-10 w-10 place-items-center rounded-lg text-xl text-gray-300 hover:bg-gray-800 disabled:text-gray-700" aria-label="Kurangi target latihan">−</button>
-                  <label className="flex items-center gap-1 text-sm text-gray-400"><input type="number" inputMode="numeric" min="1" max="7" value={weeklySessionTarget} onChange={(event) => setTarget(Number(event.target.value) || 1)} className="w-10 bg-transparent text-center text-lg font-bold text-gray-100 outline-none" aria-label="Target latihan per minggu" /><span>x</span></label>
-                  <button type="button" onClick={() => setTarget(weeklySessionTarget + 1)} disabled={weeklySessionTarget >= 7} className="grid h-10 w-10 place-items-center rounded-lg text-xl text-gray-300 hover:bg-gray-800 disabled:text-gray-700" aria-label="Tambah target latihan">+</button>
+                  <label className="flex items-center gap-1 text-sm text-gray-400"><input type="number" inputMode="numeric" min="1" max="6" value={weeklySessionTarget} onChange={(event) => setTarget(Number(event.target.value) || 1)} className="w-10 bg-transparent text-center text-lg font-bold text-gray-100 outline-none" aria-label="Target latihan per minggu" /><span>x</span></label>
+                  <button type="button" onClick={() => setTarget(weeklySessionTarget + 1)} disabled={weeklySessionTarget >= 6} className="grid h-10 w-10 place-items-center rounded-lg text-xl text-gray-300 hover:bg-gray-800 disabled:text-gray-700" aria-label="Tambah target latihan">+</button>
                 </div>
               </fieldset>
               <fieldset>

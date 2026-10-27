@@ -56,7 +56,7 @@ function parseProgramRequest(value: unknown): ProgramRequest | null {
     !Array.isArray(focuses) || focuses.length > muscleFocuses.length ||
     new Set(focuses).size !== focuses.length ||
     !focuses.every((focus) => typeof focus === "string" && muscleFocuses.includes(focus as Exclude<CoachMuscleFocus, "full_body">)) ||
-    !Number.isInteger(weeklySessionTarget) || (weeklySessionTarget as number) < 1 || (weeklySessionTarget as number) > 7 ||
+    !Number.isInteger(weeklySessionTarget) || (weeklySessionTarget as number) < 1 || (weeklySessionTarget as number) > 6 ||
     ![30, 45, 60].includes(sessionDurationMinutes as number) ||
     typeof trainingExperience !== "string" || !experiences.includes(trainingExperience as CoachTrainingExperience) ||
     !Array.isArray(equipmentIds) || equipmentIds.length > equipmentOptions.length ||
